@@ -7,7 +7,7 @@ using RentConnect.Presentation.UI.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Add services to the container.hh
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
