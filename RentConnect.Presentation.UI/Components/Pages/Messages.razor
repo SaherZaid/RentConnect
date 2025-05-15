@@ -211,7 +211,9 @@
 
         if (!string.IsNullOrEmpty(currentUserId))
         {
-            conversations = await ChatService.GetUserConversationsAsync(currentUserId);
+            conversations = (await ChatService.GetUserConversationsAsync(currentUserId))
+                .OrderByDescending(c => c.LastTimestamp)
+                .ToList();
 
             foreach (var convo in conversations)
             {
