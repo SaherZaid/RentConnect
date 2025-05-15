@@ -1,0 +1,22 @@
+﻿@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Mvc.RazorPages
+
+@using global::RentConnect.API.RentConnect.Domain.Models
+
+
+@inject UserManager<ApplicationUser> _userManager
+@inject RoleManager<IdentityRole> _roleManager
+
+
+
+
+@code {
+    [Authorize(Roles = "Admin, SuperAdmin")]
+    public class AdminPageModel : PageModel
+    {
+        public void OnGet()
+        {
+        }
+    }
+}

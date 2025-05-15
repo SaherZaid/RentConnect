@@ -1,0 +1,143 @@
+﻿@page "/bookings"
+@inject IBookingService BookingService
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager NavManager
+@using Microsoft.AspNetCore.Components.Authorization
+@using global::RentConnect.Presentation.UI.RentConnect.Presentation.DTOs
+@using global::RentConnect.API.Enums
+@using global::RentConnect.Presentation.UI.IServices
+@rendermode InteractiveServer
+
+<PageTitle>My Bookings</PageTitle>
+
+<style>
+    .bookings-container {
+        max-width: 1000px;
+        margin: auto;
+        background-color: #fff;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+
+    .table th, .table td {
+        vertical-align: middle;
+    }
+
+    .badge {
+        font-size: 0.9rem;
+    }
+
+    .table th {
+        background-color: #f8f9fa;
+    }
+
+    .text-muted small {
+        font-size: 0.8rem;
+    }
+</style>
+
+<div class="container my-5">
+    <div class="bookings-container">
+        <h3 class="mb-4 text-center">My Bookings</h3>
+
+        @if (!isAuthenticated)
+        {
+            <div class="alert alert-warning text-center">
+                Please <a href="/Account/Login">log in</a> to view your bookings.
+            </div>
+        }
+        else if (bookings == null)
+        {
+            <p class="text-muted text-center">Loading your bookings...</p>
+        }
+        else if (!bookings.Any())
+        {
+            <p class="text-muted text-center">You haven't made any bookings yet.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle text-center">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Item</th>
+                            <th>Owner</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>Status / Chat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var booking in bookings)
+                        {
+                            <tr>
+                                <td>@booking.ItemName</td>
+                                <td><strong>@booking.OwnerName</strong></td>
+                                <td>@booking.OwnerEmail</td>
+                                <td>@booking.OwnerPhone</td>
+                                <td>@booking.StartDate.ToShortDateString()</td>
+                                <td>@booking.EndDate.ToShortDateString()</td>
+                                <td>
+                                    <span class="badge bg-@GetStatusColor(booking.Status)">
+                                        @booking.Status
+                                    </span>
+
+                                    @if (booking.Status == BookingStatus.Confirmed)
+                                    {
+                                        <div class="mt-2">
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="() => GoToMessages(booking.OwnerId, booking.ItemId)">
+                                                <i class="fas fa-comment-dots me-1"></i> Send a Message
+                                            </button>
+                                        </div>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<BookingDto>? bookings;
+    private bool isAuthenticated = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        isAuthenticated = user.Identity?.IsAuthenticated ?? false;
+
+        if (isAuthenticated)
+        {
+            var userId = user.FindFirst(c => c.Type == "sub")?.Value
+                      ?? user.FindFirst(c => c.Type.Contains("nameidentifier"))?.Value;
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                bookings = (await BookingService.GetByRenterIdAsync(userId))
+                    .OrderByDescending(b => b.StartDate)
+                    .ToList();
+            }
+        }
+    }
+
+    private string GetStatusColor(BookingStatus status) => status switch
+    {
+        BookingStatus.Pending => "warning",
+        BookingStatus.Confirmed => "info",
+        BookingStatus.Declined => "danger",
+        _ => "dark"
+    };
+
+    private void GoToMessages(string ownerId, Guid itemId)
+    {
+        NavManager.NavigateTo($"/messages?receiverId={ownerId}&itemId={itemId}");
+    }
+}

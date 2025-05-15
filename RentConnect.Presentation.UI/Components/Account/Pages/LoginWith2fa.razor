@@ -1,8 +1,11 @@
 ﻿@page "/Account/LoginWith2fa"
 
 @using System.ComponentModel.DataAnnotations
+@using global::RentConnect.API.RentConnect.Domain.Models
+@using global::RentConnect.Presentation.UI.Components.Account.Shared
+
 @using Microsoft.AspNetCore.Identity
-@using RentConnect.Presentation.UI.Data
+
 
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager

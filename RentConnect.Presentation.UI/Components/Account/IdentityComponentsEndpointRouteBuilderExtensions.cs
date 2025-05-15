@@ -6,9 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using RentConnect.Presentation.UI.Components.Account.Pages;
 using RentConnect.Presentation.UI.Components.Account.Pages.Manage;
-using RentConnect.Presentation.UI.Data;
+
 using System.Security.Claims;
 using System.Text.Json;
+using RentConnect.API.RentConnect.Domain.Models;
 
 namespace Microsoft.AspNetCore.Routing
 {

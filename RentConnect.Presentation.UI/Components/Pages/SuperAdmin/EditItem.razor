@@ -1,0 +1,59 @@
+﻿@page "/edititem/{ItemId:guid}"
+@inject IItemService ItemService
+@inject NavigationManager NavManager
+@using global::RentConnect.Presentation.UI.RentConnect.Presentation.DTOs
+@using global::RentConnect.Presentation.UI.IServices
+@rendermode InteractiveServer
+
+<h3>Edit Item</h3>
+
+@if (item == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <EditForm Model="item" OnValidSubmit="UpdateItem">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label>Name</label>
+            <InputText class="form-control" @bind-Value="item.Name" />
+        </div>
+
+        <div class="mb-3">
+            <label>Description</label>
+            <InputTextArea class="form-control" @bind-Value="item.Description" />
+        </div>
+
+        <div class="mb-3">
+            <label>Price Per Day</label>
+            <InputNumber class="form-control" @bind-Value="item.PricePerDay" />
+        </div>
+
+        <div class="mb-3">
+            <label>City</label>
+            <InputText class="form-control" @bind-Value="item.City" />
+        </div>
+
+        <button class="btn btn-primary" type="submit">Save</button>
+        <button class="btn btn-secondary ms-2" @onclick='() => NavManager.NavigateTo("/profile")'>Cancel</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public Guid ItemId { get; set; }
+    private ItemDto? item;
+
+    protected override async Task OnInitializedAsync()
+    {
+        item = await ItemService.GetByIdAsync(ItemId);
+    }
+
+    private async Task UpdateItem()
+    {
+        await ItemService.UpdateAsync(item!);
+        NavManager.NavigateTo("/profile");
+    }
+}

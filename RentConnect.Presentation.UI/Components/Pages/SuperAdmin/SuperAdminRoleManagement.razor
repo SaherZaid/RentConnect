@@ -1,0 +1,88 @@
+﻿@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Mvc
+@using Microsoft.AspNetCore.Mvc.RazorPages
+@using Microsoft.EntityFrameworkCore
+
+@using global::RentConnect.API.RentConnect.Domain.Models
+
+
+@inject UserManager<ApplicationUser> _userManager
+@inject RoleManager<IdentityRole> _roleManager
+
+
+
+@code {
+
+
+
+    [Authorize(Roles = "SuperAdmin")]
+    public class ManageRolesModel : PageModel
+    {
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
+
+        public ManageRolesModel(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+        {
+            _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+            _roleManager = roleManager ?? throw new ArgumentNullException(nameof(roleManager));
+        }
+
+        public IList<ApplicationUser> Users { get; set; } = new List<ApplicationUser>();
+
+        public async Task OnGetAsync()
+        {
+            Users = await _userManager.Users.ToListAsync();
+        }
+
+        public async Task<IActionResult> OnPostAddRoleAsync(string userId, string role)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                ModelState.AddModelError(string.Empty, $"User with ID {userId} not found.");
+                return Page();
+            }
+
+            if (!await _roleManager.RoleExistsAsync(role))
+            {
+                ModelState.AddModelError(string.Empty, $"Role {role} does not exist.");
+                return Page();
+            }
+
+            var result = await _userManager.AddToRoleAsync(user, role);
+            if (!result.Succeeded)
+            {
+                ModelState.AddModelError(string.Empty, string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
+
+            return RedirectToPage();
+        }
+
+        public async Task<IActionResult> OnPostRemoveRoleAsync(string userId, string role)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                ModelState.AddModelError(string.Empty, $"User with ID {userId} not found.");
+                return Page();
+            }
+
+            if (!await _roleManager.RoleExistsAsync(role))
+            {
+                ModelState.AddModelError(string.Empty, $"Role {role} does not exist.");
+                return Page();
+            }
+
+            var result = await _userManager.RemoveFromRoleAsync(user, role);
+            if (!result.Succeeded)
+            {
+                ModelState.AddModelError(string.Empty, string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
+
+            return RedirectToPage();
+        }
+    }
+
+
+}

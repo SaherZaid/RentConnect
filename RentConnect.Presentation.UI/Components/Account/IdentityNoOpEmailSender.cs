@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
-using RentConnect.Presentation.UI.Data;
+using RentConnect.API.RentConnect.Domain.Models;
+
 
 namespace RentConnect.Presentation.UI.Components.Account
 {

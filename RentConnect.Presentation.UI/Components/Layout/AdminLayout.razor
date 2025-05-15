@@ -1,0 +1,197 @@
+﻿@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using global::RentConnect.API.RentConnect.Domain.Models
+@inherits LayoutComponentBase
+@attribute [Authorize(Roles = "Admin")]
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthProvider
+@inject UserManager<ApplicationUser> UserManager
+
+
+@code {
+
+    private string? currentUrl;
+
+    private string? fullName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var appUser = await UserManager.GetUserAsync(user);
+            fullName = appUser?.FullName;
+        }
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+
+}
+
+<style>
+    .custom-nav-gap {
+        gap: 0.6rem !important;
+    }
+
+        .custom-nav-gap .nav-link {
+            padding: 0.3rem 0.8rem;
+            font-size: 0.9rem;
+            border-radius: 4px;
+        }
+
+    .nav-link {
+        transition: all 0.2s ease-in-out;
+        position: relative;
+    }
+
+        .nav-link:hover {
+            color: #0d6efd !important;
+            text-decoration: none;
+        }
+
+        .nav-link::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 0%;
+            height: 2px;
+            background-color: #0d6efd;
+            transition: width 0.3s ease;
+        }
+
+        .nav-link:hover::after,
+        .nav-link.active::after {
+            width: 100%;
+        }
+
+        .nav-link.active {
+            color: #0d6efd !important;
+            font-weight: 600;
+        }
+
+        .nav-link[type="submit"],
+        .nav-link.bg-transparent {
+            padding: 0.3rem 0.8rem;
+            font-size: 0.9rem;
+            display: inline-block;
+            border-radius: 4px;
+            transition: all 0.2s ease-in-out;
+        }
+
+            .nav-link[type="submit"]:hover {
+                color: #0d6efd !important;
+                text-decoration: none;
+            }
+</style>
+
+<header class="shadow-sm border-bottom bg-white sticky-top">
+    <div class="container-fluid py-2 d-flex align-items-center justify-content-between flex-nowrap">
+        <a class="navbar-brand fw-bold text-primary fs-5" href="/Admin/Users">
+            <i class="bi bi-box-seam-fill me-2"></i>RentConnect Admin
+        </a>
+
+        <div class="d-flex justify-content-between align-items-center flex-grow-1">
+            <div class="d-flex align-items-center custom-nav-gap">
+                <nav class="d-flex flex-row align-items-center flex-wrap custom-nav-gap">
+                    <NavLink class="nav-link text-dark" href="/" Match="NavLinkMatch.All">
+                        <i class="bi bi-house-door-fill me-1"></i> Home
+                    </NavLink>
+                    <NavLink class="nav-link text-dark" href="/Admin/Users">
+                        <i class="bi bi-people me-1"></i> Users
+                    </NavLink>
+                    <NavLink class="nav-link text-dark" href="/Admin/Categories">
+                        <i class="bi bi-tags me-1"></i> Categories
+                    </NavLink>
+                    <NavLink class="nav-link text-dark" href="/Admin/Reviews">
+                        <i class="bi bi-chat-left-text me-1"></i> Reviews
+                    </NavLink>
+
+                    <AuthorizeView>
+                        <Authorized Context="auth">
+                            @if (auth.User.IsInRole("SuperAdmin"))
+                            {
+                                <NavLink class="nav-link text-dark" href="/manage-roles">
+                                    <i class="bi bi-person-gear me-1"></i> Manage Roles
+                                </NavLink>
+                            }
+                        </Authorized>
+                    </AuthorizeView>
+                </nav>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 flex-nowrap ms-auto">
+                <AuthorizeView>
+                    <Authorized>
+                        <span class="text-dark fw-semibold d-none d-md-inline small me-2" style="white-space: nowrap;">
+                            <i class="bi bi-person-circle me-1"></i> @fullName
+                        </span>
+                        <form action="/Account/Logout" method="post" class="d-inline">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                            <button type="submit" class="nav-link text-dark border-0 bg-transparent p-0 small">
+                                <i class="bi bi-box-arrow-right me-1"></i> Logout
+                            </button>
+                        </form>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="flex-grow-1 p-4 bg-light">
+    @Body
+</main>
+
+<footer class="footer bg-dark text-white mt-auto py-4">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-4 text-center text-md-start mb-3 mb-md-0">
+                <h5 class="fw-bold"><i class="bi bi-box-seam me-2"></i>RentConnect</h5>
+                <small class="text-muted">Find it. Rent it. Return it.</small>
+            </div>
+
+            <div class="col-md-4 text-center mb-3 mb-md-0">
+                <a href="/" class="footer-link me-3">Home</a>
+                <a href="/items" class="footer-link me-3">Items</a>
+                <a href="/categories" class="footer-link me-3">Categories</a>
+                <a href="/contact" class="footer-link">Contact</a>
+            </div>
+
+            <div class="col-md-4 text-center text-md-end">
+                <a href="https://facebook.com" target="_blank" class="text-white me-3">
+                    <i class="bi bi-facebook fs-5"></i>
+                </a>
+                <a href="https://twitter.com" target="_blank" class="text-white me-3">
+                    <i class="bi bi-twitter-x fs-5"></i>
+                </a>
+                <a href="https://instagram.com" target="_blank" class="text-white me-3">
+                    <i class="bi bi-instagram fs-5"></i>
+                </a>
+                <a href="https://linkedin.com" target="_blank" class="text-white">
+                    <i class="bi bi-linkedin fs-5"></i>
+                </a>
+            </div>
+        </div>
+
+        <hr class="border-secondary my-3" />
+
+        <div class="text-center small text-muted">
+            &copy; @DateTime.Now.Year RentConnect. All rights reserved.
+        </div>
+    </div>
+</footer>

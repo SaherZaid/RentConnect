@@ -1,17 +1,77 @@
 ﻿@page "/Account/ConfirmEmail"
 
 @using System.Text
+@using global::RentConnect.API.RentConnect.Domain.Models
+@using global::RentConnect.Presentation.UI.Components.Account.Shared
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
-@using RentConnect.Presentation.UI.Data
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IdentityRedirectManager RedirectManager
 
-<PageTitle>Confirm email</PageTitle>
+<PageTitle>Confirm Email</PageTitle>
 
-<h1>Confirm email</h1>
-<StatusMessage Message="@statusMessage" />
+<style>
+    body {
+        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+        color: white;
+    }
+
+    .login-container {
+        max-width: 420px;
+        margin: 5rem auto;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 1rem;
+        box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        backdrop-filter: blur(8px);
+        text-align: center;
+    }
+
+    h1 {
+        color: #fff;
+        font-size: 1.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .status-text {
+        font-size: 1.1rem;
+        color: #ccc;
+    }
+
+    .status-success {
+        color: #0f0;
+        font-weight: bold;
+    }
+
+    .status-error {
+        color: #f88;
+        font-weight: bold;
+    }
+
+    a {
+        color: #ffc107;
+    }
+
+        a:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+</style>
+
+<div class="login-container">
+    <h1>Email Confirmation</h1>
+    <StatusMessage Message="@statusMessage" />
+    @if (statusMessage?.Contains("Thank you") == true)
+    {
+        <p class="status-text status-success">@statusMessage</p>
+        <p><a href="/Account/Login">Go to login</a></p>
+    }
+    else
+    {
+        <p class="status-text status-error">@statusMessage</p>
+    }
+</div>
 
 @code {
     private string? statusMessage;
@@ -42,7 +102,9 @@
         {
             var code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(Code));
             var result = await UserManager.ConfirmEmailAsync(user, code);
-            statusMessage = result.Succeeded ? "Thank you for confirming your email." : "Error confirming your email.";
+            statusMessage = result.Succeeded
+                ? "Thank you for confirming your email."
+                : "Error confirming your email.";
         }
     }
 }

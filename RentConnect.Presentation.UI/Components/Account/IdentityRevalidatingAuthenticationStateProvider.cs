@@ -2,8 +2,9 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
-using RentConnect.Presentation.UI.Data;
+
 using System.Security.Claims;
+using RentConnect.API.RentConnect.Domain.Models;
 
 namespace RentConnect.Presentation.UI.Components.Account
 {

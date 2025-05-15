@@ -1,7 +1,240 @@
 ﻿@page "/"
+@using global::RentConnect.Presentation.UI.RentConnect.Presentation.DTOs
+@using global::RentConnect.Presentation.UI.IServices
+@inject NavigationManager NavManager
+@inject ICategoryService CategoryService
+@inject IItemService ItemService
+@rendermode InteractiveServer
 
-<PageTitle>Home</PageTitle>
+<style>
+    .hero-section {
+        width: 98.58vw;
+        margin-left: calc(-50vw + 50% + 10px); /* كان 0، زودنا +8px */
+        background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('/images/rentconnectHome.jpg') center/cover no-repeat;
+        height: 500px;
+        display: flex;
+        align-items: center;
+        color: white;
+        position: relative;
+        overflow-x:  hidden;
+    }
 
-<h1>Hello, world!</h1>
+    .search-box {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        max-width: 800px;
+        margin: 2rem auto 0 auto;
+    }
 
-Welcome to your new app.
+    .icon-circle {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+    }
+
+    .category-icon:hover {
+        transform: scale(1.05);
+        transition: all 0.2s ease-in-out;
+    }
+
+    .category-icon i {
+        font-size: 1.5rem;
+    }
+
+    /* Category Colors */
+    .category-color-1 {
+        background-color: sandybrown;
+    }
+
+    .category-color-2 {
+        background-color: chartreuse;
+    }
+
+    .category-color-3 {
+        background-color: coral;
+    }
+
+    .category-color-4 {
+        background-color: darkslateblue;
+    }
+
+    .category-color-5 {
+        background-color: darkgreen;
+    }
+
+    .category-color-6 {
+        background-color: mediumpurple;
+    }
+
+    .category-color-7 {
+        background-color: darkred;
+    }
+
+    .category-color-8 {
+        background-color: gold;
+    }
+
+    .category-color-9 {
+        background-color: cornflowerblue;
+    }
+
+    .category-color-10 {
+        background-color: hotpink;
+    }
+
+    .category-color-11 {
+        background-color: teal;
+    }
+
+    .category-color-12 {
+        background-color: deeppink;
+    }
+
+    .category-color-13 {
+        background-color: rebeccapurple;
+    }
+
+    .category-color-14 {
+        background-color: darkslategray;
+    }
+
+    .category-color-15 {
+        background-color: forestgreen;
+    }
+
+    .category-color-16 {
+        background-color: indianred;
+    }
+
+</style>
+
+<!-- Hero Section -->
+<!-- Hero Section -->
+<div class="hero-section">
+    <div class="w-100 text-center">
+        <h1 class="display-4 fw-bold">Find What You Need, Rent What You Want</h1>
+        <p class="lead">Explore a variety of items in your city – easy, fast, and reliable.</p>
+
+        <!-- Search Box -->
+        <div class="search-box mt-4">
+            <h4 class="mb-3 text-dark">Search</h4>
+            <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                    <input type="text" class="form-control" placeholder="What are you looking for?" @bind="searchTerm" />
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" @bind="selectedCity">
+                        <option>All Cities</option>
+                        @foreach (var city in allCities)
+                        {
+                            <option>@city</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-center">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="shippable" @bind="isShippable" />
+                        <label class="form-check-label text-dark" for="shippable">
+                            Shippable
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary w-100" @onclick="OnSearch">Find Items</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- Categories Section -->
+<div class="container my-5">
+    <h4 class="mb-4 text-center">Explore Categories</h4>
+    <div class="d-flex justify-content-center flex-wrap gap-4">
+        @for (int i = 0; i < categories.Count; i++)
+        {
+            var category = categories[i];
+            var colorClass = $"category-color-{(i % 16) + 1}";
+
+            <div class="category-icon text-center" style="cursor: pointer;" @onclick="() => GoToCategory(category.Id)">
+                <div class=@($"icon-circle mx-auto mb-2 {colorClass}")>
+                    <i class="@GetCategoryIcon(category.Name) text-white fs-4"></i>
+                </div>
+                <span>@category.Name</span>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    List<CategoryDto> categories = new();
+    List<ItemDto> allItems = new();
+    List<string> allCities = new();
+
+    string searchTerm = "";
+    string selectedCity = "All Cities";
+    bool isShippable = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = (await CategoryService.GetAllCategoriesAsync()).ToList();
+
+        allItems = (await ItemService.GetAllAsync()).ToList();
+        allCities = allItems
+            .Where(i => !string.IsNullOrWhiteSpace(i.City))
+            .Select(i => i.City)
+            .Distinct()
+            .OrderBy(city => city)
+            .ToList();
+    }
+
+    void OnSearch()
+    {
+        var queryParams = new Dictionary<string, string>();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+            queryParams["search"] = searchTerm;
+
+        if (!string.IsNullOrWhiteSpace(selectedCity) && selectedCity != "All Cities")
+            queryParams["city"] = selectedCity;
+
+        if (isShippable)
+            queryParams["shippable"] = "true";
+
+        var queryString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
+        NavManager.NavigateTo($"/items?{queryString}");
+    }
+
+    void GoToCategory(Guid categoryId)
+    {
+        NavManager.NavigateTo($"/items?categoryId={categoryId}");
+    }
+
+    string GetCategoryIcon(string name)
+    {
+        return name.ToLower() switch
+        {
+            var s when s.Contains("electronics") => "bi bi-tv",
+            var s when s.Contains("furniture") => "bi bi-reception-4",
+            var s when s.Contains("appliances") => "bi bi-house-door",
+            var s when s.Contains("clothing") => "bi bi-bag",
+            var s when s.Contains("sports") => "bi bi-bicycle",
+            var s when s.Contains("baby") => "bi bi-bug",
+            var s when s.Contains("photo") => "bi bi-camera",
+            var s when s.Contains("party") => "bi bi-gift",
+            var s when s.Contains("tools") => "bi bi-hammer",
+            var s when s.Contains("games") => "bi bi-controller",
+            var s when s.Contains("books") => "bi bi-book",
+            var s when s.Contains("garden") => "bi bi-flower1",
+            var s when s.Contains("health") => "bi bi-heart-pulse",
+            var s when s.Contains("office") => "bi bi-briefcase",
+            var s when s.Contains("camping") => "bi bi-tree",
+            var s when s.Contains("seasonal") => "bi bi-calendar3",
+            _ => "bi bi-box"
+        };
+    }
+}

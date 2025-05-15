@@ -1,0 +1,270 @@
+﻿@page "/items"
+@inject NavigationManager NavManager
+@inject IItemService ItemService
+@inject IFavoriteService FavoriteService
+@inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime JS
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.WebUtilities
+@using global::RentConnect.Presentation.UI.RentConnect.Presentation.DTOs
+@using global::RentConnect.Presentation.UI.IServices
+@using global::RentConnect.Presentation.UI.Helper
+@rendermode InteractiveServer
+
+
+<style>
+    .filters-bar {
+        background-color: #fff;
+        border-radius: 0.5rem;
+        padding: 1rem 1.5rem;
+        box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        margin-bottom: 2rem;
+    }
+</style>
+
+<div class="container my-5">
+
+
+    <!-- Filters -->
+    <div class="filters-bar">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <input class="form-control" placeholder="Search..." @bind="searchTerm" />
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" @bind="selectedCity">
+                    <option value="">All Cities</option>
+                    @foreach (var city in allCities)
+                    {
+                        <option value="@city">@city</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="ship" @bind="filterShippable" />
+                    <label class="form-check-label" for="ship">Shippable</label>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" @bind="sortOrder">
+                    <option value="">Sort by</option>
+                    <option value="low">Price: Low to High</option>
+                    <option value="high">Price: High to Low</option>
+                </select>
+            </div>
+        </div>
+        <div class="mt-3 text-end">
+            <button class="btn btn-sm btn-outline-primary" @onclick="ApplyFilters">Apply Filters</button>
+        </div>
+    </div>
+
+    @if (items == null)
+    {
+        <p>Loading...</p>
+    }
+    else if (!items.Any())
+    {
+        <div class="alert alert-info text-center">No items found.</div>
+    }
+    else
+    {
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+            @foreach (var item in items)
+            {
+                var isFavorite = favoriteIds.Contains(item.Id);
+
+                <div class="col">
+                    <div class="card h-100 shadow-sm border-0 position-relative">
+                        <button class="btn position-absolute top-0 end-0 m-2"
+                                @onclick="() => ToggleFavorite(item.Id)"
+                                style="z-index: 10; background: rgba(255,255,255,0.8); border-radius: 50%;">
+                            <i class="@(isFavorite ? "fas fa-heart text-danger" : "far fa-heart text-muted") fa-lg"></i>
+                        </button>
+
+                        @if (item.ImageUrls?.Any() == true)
+                        {
+                            <img src="@item.ImageUrls.First()" class="card-img-top" style="object-fit: cover; height: 200px;" />
+                        }
+                        else
+                        {
+                            <img src="https://via.placeholder.com/400x200?text=No+Image" class="card-img-top" style="object-fit: cover; height: 200px;" />
+                        }
+
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">@item.Name</h5>
+                            <p class="card-text text-muted">@item.Description</p>
+
+                            <div class="mt-auto">
+                                <p class="mb-2">
+                                    <strong>@item.PricePerDay</strong> <span class="text-muted">Kr/day</span>
+                                </p>
+                                @if (!string.IsNullOrEmpty(item.CategoryName))
+                                {
+                                    <span class="badge bg-secondary">@item.CategoryName</span>
+                                }
+
+                                <div class="d-grid mt-3">
+                                    <a href="/items/@item.Id" class="btn btn-sm btn-primary">View Details</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<ItemDto> allItems = new();
+    private List<ItemDto>? items;
+    private HashSet<Guid> favoriteIds = new();
+    private bool isAuthenticated = false;
+    private string? currentUserId;
+    private bool jsFavoritesLoaded = false;
+
+    private Guid? selectedCategory;
+    private string? searchTerm;
+    private string? selectedCity;
+    private bool filterShippable;
+    private string? sortOrder;
+
+    private List<string> allCities = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = NavManager.ToAbsoluteUri(NavManager.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("search", out var search))
+            searchTerm = search;
+
+        if (query.TryGetValue("city", out var city))
+            selectedCity = city;
+
+        if (query.TryGetValue("shippable", out var ship))
+            filterShippable = ship == "true";
+
+        if (query.TryGetValue("categoryId", out var catIdStr) && Guid.TryParse(catIdStr, out var catId))
+            selectedCategory = catId;
+
+        allItems = (await ItemService.GetAllAsync()).ToList();
+        allCities = allItems
+            .Where(i => !string.IsNullOrWhiteSpace(i.City))
+            .Select(i => i.City!)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToList();
+
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        isAuthenticated = user.Identity?.IsAuthenticated ?? false;
+        currentUserId = user.FindFirst(c => c.Type == "sub")?.Value
+                        ?? user.FindFirst(c => c.Type.Contains("nameidentifier"))?.Value;
+
+        if (isAuthenticated && currentUserId != null)
+        {
+            var favorites = await FavoriteService.GetFavoritesForUserAsync(currentUserId);
+            favoriteIds = new(favorites);
+        }
+
+        ApplyFilters();
+    }
+
+
+
+    private void ApplyFilters()
+    {
+        var filtered = allItems.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var search = searchTerm.ToLowerInvariant();
+            var keywords = search.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            filtered = filtered.Where(i =>
+            {
+                var name = i.Name?.ToLowerInvariant() ?? "";
+                var description = i.Description?.ToLowerInvariant() ?? "";
+
+                return
+                    // تطابق يحتوي الكلمة (Contains)
+                    name.Contains(search) || description.Contains(search) ||
+
+                    // أو تطابق تقريبي مع الجملة
+                    FuzzyHelper.IsFuzzyMatch(name, search, 2) ||
+                    FuzzyHelper.IsFuzzyMatch(description, search, 2) ||
+
+                    // أو تطابق تقريبي مع أي كلمة فرعية
+                    keywords.Any(word =>
+                        name.Contains(word) ||
+                        description.Contains(word) ||
+                        FuzzyHelper.IsFuzzyMatch(name, word, 1) ||
+                        FuzzyHelper.IsFuzzyMatch(description, word, 1)
+                        );
+            });
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedCity))
+            filtered = filtered.Where(i => i.City == selectedCity);
+
+        if (filterShippable)
+            filtered = filtered.Where(i => i.IsShippable);
+
+        if (selectedCategory != null && selectedCategory != Guid.Empty)
+            filtered = filtered.Where(i => i.CategoryId == selectedCategory);
+
+        if (sortOrder == "low")
+            filtered = filtered.OrderBy(i => i.PricePerDay);
+        else if (sortOrder == "high")
+            filtered = filtered.OrderByDescending(i => i.PricePerDay);
+
+        items = filtered.ToList();
+    }
+
+
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !isAuthenticated && !jsFavoritesLoaded)
+        {
+            jsFavoritesLoaded = true;
+            var json = await JS.InvokeAsync<string>("localStorage.getItem", "favorites");
+            if (!string.IsNullOrEmpty(json))
+            {
+                var list = System.Text.Json.JsonSerializer.Deserialize<List<Guid>>(json);
+                favoriteIds = new(list ?? []);
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task ToggleFavorite(Guid itemId)
+    {
+        if (favoriteIds.Contains(itemId))
+        {
+            favoriteIds.Remove(itemId);
+            if (isAuthenticated && currentUserId != null)
+            {
+                await FavoriteService.RemoveFromFavoritesAsync(currentUserId, itemId);
+            }
+        }
+        else
+        {
+            favoriteIds.Add(itemId);
+            if (isAuthenticated && currentUserId != null)
+            {
+                await FavoriteService.AddToFavoritesAsync(currentUserId, itemId);
+            }
+        }
+
+        if (!isAuthenticated)
+        {
+            var list = favoriteIds.ToList();
+            var json = System.Text.Json.JsonSerializer.Serialize(list);
+            await JS.InvokeVoidAsync("localStorage.setItem", "favorites", json);
+        }
+    }
+}

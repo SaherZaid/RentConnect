@@ -1,0 +1,295 @@
+﻿@page "/profile"
+@inject IItemService ItemService
+@inject AuthenticationStateProvider AuthProvider
+@inject IReviewService ReviewService
+@inject IBookingService BookingService
+@inject NavigationManager NavManager
+@inject UserManager<ApplicationUser> UserManager
+
+@using global::RentConnect.Presentation.UI.RentConnect.Presentation.DTOs
+@using global::RentConnect.API.Enums
+@using System.ComponentModel.DataAnnotations
+@using global::RentConnect.API.RentConnect.Domain.Models
+@using global::RentConnect.Presentation.UI.IServices
+@using Microsoft.AspNetCore.Identity
+@rendermode InteractiveServer
+
+<PageTitle>My Profile</PageTitle>
+
+@if (!isAuthenticated)
+{
+    <div class="alert alert-warning text-center mt-5">
+        Please log in to view your profile.
+    </div>
+}
+else
+{
+    <div class="container mt-5">
+        <ul class="nav nav-tabs mb-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "items" ? "active" : "")" @onclick='() => activeTab = "items"' type="button" role="tab">
+                    My Items
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "profile" ? "active" : "")" @onclick='() => activeTab = "profile"' type="button" role="tab">
+                    Edit Profile
+                </button>
+            </li>
+
+        </ul>
+
+        <div class="tab-content">
+            @if (activeTab == "items")
+            {
+                <div class="tab-pane fade show active" role="tabpanel">
+                    @if (!string.IsNullOrEmpty(deleteMessage))
+                    {
+                        <div class="alert @(deleteSuccess ? "alert-success" : "alert-danger")">@deleteMessage</div>
+                    }
+
+                    @if (items == null)
+                    {
+                        <p>Loading...</p>
+                    }
+                    else if (!items.Any())
+                    {
+                        <p>You haven't added any items yet.</p>
+                    }
+                    else
+                    {
+                        <div class="row row-cols-1 row-cols-md-3 g-4">
+                            @foreach (var item in items)
+                            {
+                                <div class="col">
+                                    <div class="card h-100 shadow-sm">
+                                        <img src="@item.ImageUrls.FirstOrDefault()" class="card-img-top" style="height:200px; object-fit:cover;" />
+                                        <div class="card-body d-flex flex-column">
+                                            <h5 class="card-title">
+                                                <a href="/items/@item.Id" class="text-decoration-none text-dark">
+                                                    @item.Name
+                                                </a>
+                                            </h5>
+                                            <p class="card-text">@item.Description</p>
+                                            <p><strong>@item.PricePerDay</strong> Kr/day</p>
+
+                                            @if (item.AverageRating > 0)
+                                            {
+                                                <p>
+                                                    Rating:
+                                                    @for (int i = 1; i <= 5; i++)
+                                                    {
+                                                        <span class="@(i <= Math.Round(item.AverageRating) ? "text-warning" : "text-muted")">&#9733;</span>
+                                                    }
+                                                    (@item.AverageRating.ToString("0.0"))
+                                                </p>
+                                            }
+
+                                            <p><strong>Bookings:</strong> @item.BookingCount</p>
+
+                                            <div class="mt-auto d-flex gap-2">
+                                                <button class="btn btn-outline-primary btn-sm w-100" @onclick="() => EditItem(item.Id)">Edit</button>
+                                                <button class="btn btn-outline-danger btn-sm w-100" @onclick="() => ConfirmDelete(item.Id, item.Name)">Delete</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (showDeleteConfirmation)
+                    {
+                        <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Confirm Deletion</h5>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to delete <strong>@itemNameToDelete</strong>?
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                                        <button class="btn btn-danger" @onclick="DeleteItemConfirmed">Delete</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else if (activeTab == "profile" && editModel != null)
+            {
+                <div class="tab-pane fade show active" role="tabpanel">
+                    <div class="p-4 rounded bg-light shadow" style="max-width: 600px; margin: auto;">
+                        <h4>Edit Profile</h4>
+                        <EditForm Model="editModel" OnValidSubmit="UpdateProfile">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary class="text-danger" />
+
+                            <div class="form-floating mb-3">
+                                <InputText @bind-Value="editModel.FullName" class="form-control" />
+                                <label>Full Name</label>
+                                <ValidationMessage For="@(() => editModel.FullName)" class="text-danger" />
+                            </div>
+
+                            <div class="form-floating mb-3">
+                                <InputText @bind-Value="editModel.Email" class="form-control" />
+                                <label>Email</label>
+                                <ValidationMessage For="@(() => editModel.Email)" class="text-danger" />
+                            </div>
+
+                            <div class="form-floating mb-3">
+                                <InputText @bind-Value="editModel.PhoneNumber" class="form-control" />
+                                <label>Phone Number</label>
+                                <ValidationMessage For="@(() => editModel.PhoneNumber)" class="text-danger" />
+                            </div>
+
+                            <button class="btn btn-primary w-100" type="submit">Save Changes</button>
+
+                            @if (!string.IsNullOrEmpty(profileMessage))
+                            {
+                                <div class="alert @(profileSuccess ? "alert-success" : "alert-danger") mt-3">@profileMessage</div>
+                            }
+                        </EditForm>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private string activeTab = "items";
+    private List<ItemDto> items = new();
+    private bool isAuthenticated = false;
+    private string? userId;
+
+    private Guid itemIdToDelete;
+    private string? itemNameToDelete;
+    private bool showDeleteConfirmation = false;
+
+    private string? deleteMessage;
+    private bool deleteSuccess = false;
+
+    private EditProfileModel? editModel;
+    private string? profileMessage;
+    private bool profileSuccess;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        isAuthenticated = user.Identity?.IsAuthenticated ?? false;
+        userId = user.FindFirst(c => c.Type == "sub")?.Value
+                  ?? user.FindFirst(c => c.Type.Contains("nameidentifier"))?.Value;
+
+        if (!string.IsNullOrEmpty(userId))
+        {
+            items = (await ItemService.GetAllAsync())
+                    .Where(i => i.OwnerId == userId)
+                    .ToList();
+
+            foreach (var item in items)
+            {
+                var bookings = await BookingService.GetByItemIdAsync(item.Id);
+                item.BookingCount = bookings.Count();
+
+                var reviews = await ReviewService.GetByItemIdAsync(item.Id);
+                item.AverageRating = reviews.Any() ? reviews.Average(r => r.Rating) : 0;
+            }
+
+            var appUser = await UserManager.FindByIdAsync(userId);
+            if (appUser != null)
+            {
+                editModel = new EditProfileModel
+                    {
+                        FullName = appUser.FullName,
+                        Email = appUser.Email,
+                        PhoneNumber = appUser.PhoneNumber
+                    };
+            }
+        }
+    }
+
+    private void EditItem(Guid itemId)
+    {
+        NavManager.NavigateTo($"/edititem/{itemId}");
+    }
+
+    private void ConfirmDelete(Guid id, string name)
+    {
+        itemIdToDelete = id;
+        itemNameToDelete = name;
+        showDeleteConfirmation = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirmation = false;
+    }
+
+    private async Task DeleteItemConfirmed()
+    {
+        try
+        {
+            await ItemService.DeleteAsync(itemIdToDelete);
+            items = items.Where(i => i.Id != itemIdToDelete).ToList();
+
+            deleteMessage = "Item deleted successfully.";
+            deleteSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            deleteMessage = $"Failed to delete item: {ex.Message}";
+            deleteSuccess = false;
+        }
+
+        showDeleteConfirmation = false;
+    }
+
+    private async Task UpdateProfile()
+    {
+        if (userId is null) return;
+
+        var user = await UserManager.FindByIdAsync(userId);
+        if (user is null)
+        {
+            profileMessage = "User not found.";
+            profileSuccess = false;
+            return;
+        }
+
+        user.FullName = editModel!.FullName;
+        user.Email = editModel.Email;
+        user.UserName = editModel.Email;
+        user.PhoneNumber = editModel.PhoneNumber;
+
+        var result = await UserManager.UpdateAsync(user);
+
+        if (result.Succeeded)
+        {
+            profileMessage = "Profile updated successfully.";
+            profileSuccess = true;
+        }
+        else
+        {
+            profileMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+            profileSuccess = false;
+        }
+    }
+
+    public class EditProfileModel
+    {
+        [Required]
+        public string FullName { get; set; } = "";
+
+        [Required, EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required, Phone]
+        public string PhoneNumber { get; set; } = "";
+    }
+}

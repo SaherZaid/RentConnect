@@ -1,0 +1,269 @@
+﻿@page "/additems"
+@rendermode InteractiveServer
+@inject NavigationManager NavManager
+@inject IItemService ItemService
+@inject ICategoryService CategoryService
+@inject AuthenticationStateProvider AuthProvider
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Authorization
+@using global::RentConnect.Presentation.UI.RentConnect.Presentation.DTOs
+@using global::RentConnect.Presentation.UI.IServices
+
+<PageTitle>Add Item</PageTitle>
+
+<style>
+    .form-container {
+        max-width: 700px;
+        margin: auto;
+        background: #fff;
+        padding: 2.5rem;
+        border-radius: 1rem;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+
+        .form-container h3 {
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .form-container .form-control,
+        .form-container .form-select {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .form-container textarea {
+            min-height: 120px;
+        }
+
+    .img-preview {
+        height: 100px;
+        object-fit: cover;
+        border-radius: 8px;
+        box-shadow: 0 0 5px rgba(0,0,0,0.2);
+    }
+
+    .toast-container {
+        z-index: 1055;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        flex-direction: column;
+    }
+</style>
+
+<div class="form-container my-5">
+    <AuthorizeView Context="authContext">
+        <Authorized>
+            <h3>Add New Item</h3>
+
+            <EditForm Model="item" OnValidSubmit="SubmitItem">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-3">
+                    <InputText class="form-control" @bind-Value="item.Name" placeholder="Item Name" />
+                </div>
+
+                <div class="mb-3">
+                    <InputTextArea class="form-control" @bind-Value="item.Description" placeholder="Description" />
+                </div>
+
+                <div class="mb-3">
+                    <InputNumber class="form-control" @bind-Value="item.PricePerDay" placeholder="Price per day" />
+                </div>
+
+                <div class="mb-3">
+                    <select class="form-select" @bind="item.CategoryId">
+                        <option value="@Guid.Empty">-- Select a Category --</option>
+                        @foreach (var category in categories)
+                        {
+                            <option value="@category.Id">@category.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <InputText class="form-control" @bind-Value="item.City" placeholder="City (optional)" />
+                </div>
+
+                <div class="mb-3 form-check">
+                    <InputCheckbox class="form-check-input" @bind-Value="item.IsShippable" />
+                    <label class="form-check-label">Shippable?</label>
+                </div>
+
+                <div class="mb-3">
+                    <InputTextArea class="form-control" @bind-Value="item.Notes" placeholder="Additional notes (optional)" />
+                </div>
+
+                <h5>Images</h5>
+
+                @foreach (var file in memoryFiles.Select((f, i) => new { f, i }))
+                {
+                    <div class="mb-2 d-flex align-items-center">
+                        <img src="@($"data:{file.f.ContentType};base64,{Convert.ToBase64String(file.f.Content)}")" class="img-preview" />
+                        <button type="button" class="btn btn-sm btn-outline-danger ms-2" @onclick="() => RemoveImage(file.i)">Remove</button>
+                    </div>
+                }
+
+                @foreach (var input in uploadInputs)
+                {
+                    <div class="mb-2">
+                        <InputFile OnChange="e => HandleFileUpload(e, input.Id)" />
+                    </div>
+                }
+
+                <button type="button" class="btn btn-outline-secondary mb-3" @onclick="AddUploadInput">
+                    + Add Image
+                </button>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Submit Item</button>
+                </div>
+            </EditForm>
+        </Authorized>
+        <NotAuthorized>
+            <div class="alert alert-warning text-center">
+                Please <a href="/Account/Login">log in</a> to add an item.
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+
+    <!-- Toast -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        @if (!string.IsNullOrEmpty(toastMessage))
+        {
+            <div class="toast show text-white @toastColor border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="@toastIcon me-2"></i> @toastMessage
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="()=>toastMessage=null"></button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    ItemWithImagesDto item = new();
+    List<CategoryDto> categories = new();
+    List<(string FileName, string ContentType, byte[] Content)> memoryFiles = new();
+    List<UploadInput> uploadInputs = new() { new UploadInput() };
+
+    string? toastMessage;
+    string toastColor = "bg-success";
+    string toastIcon = "fas fa-check-circle";
+
+    CancellationTokenSource toastCts = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = (await CategoryService.GetAllCategoriesAsync()).ToList();
+    }
+
+    class UploadInput
+    {
+        public Guid Id { get; set; } = Guid.NewGuid();
+    }
+
+    void AddUploadInput() => uploadInputs.Add(new UploadInput());
+
+    async Task HandleFileUpload(InputFileChangeEventArgs e, Guid inputId)
+    {
+        var file = e.File;
+        using var ms = new MemoryStream();
+        await file.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024).CopyToAsync(ms);
+        memoryFiles.Add((file.Name, file.ContentType, ms.ToArray()));
+
+        uploadInputs.RemoveAll(x => x.Id == inputId);
+        uploadInputs.Add(new UploadInput());
+    }
+
+    void RemoveImage(int index)
+    {
+        if (index >= 0 && index < memoryFiles.Count)
+            memoryFiles.RemoveAt(index);
+    }
+
+    async Task SubmitItem()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var ownerId = user.FindFirst(c => c.Type == "sub")?.Value
+                   ?? user.FindFirst(c => c.Type.Contains("nameidentifier"))?.Value;
+
+        if (string.IsNullOrWhiteSpace(ownerId))
+        {
+            await ShowToast("Unable to detect user identity.", "bg-danger", "fas fa-exclamation-circle");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(item.Name) || string.IsNullOrWhiteSpace(item.Description) || item.PricePerDay <= 0 || item.CategoryId == Guid.Empty)
+        {
+            await ShowToast("Please fill all required fields.", "bg-danger", "fas fa-exclamation-triangle");
+            return;
+        }
+
+        item.OwnerId = ownerId;
+
+        var formData = new MultipartFormDataContent();
+        formData.Add(new StringContent(item.Name), "Name");
+        formData.Add(new StringContent(item.Description), "Description");
+        formData.Add(new StringContent(item.PricePerDay.ToString()), "PricePerDay");
+        formData.Add(new StringContent(item.OwnerId), "OwnerId");
+        formData.Add(new StringContent(item.CategoryId.ToString()), "CategoryId");
+        formData.Add(new StringContent(item.IsShippable.ToString()), "IsShippable");
+
+        if (!string.IsNullOrWhiteSpace(item.City))
+            formData.Add(new StringContent(item.City), "City");
+
+        if (!string.IsNullOrWhiteSpace(item.Notes))
+            formData.Add(new StringContent(item.Notes), "Notes");
+
+        foreach (var file in memoryFiles)
+        {
+            var fileContent = new ByteArrayContent(file.Content);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            formData.Add(fileContent, "Images", file.FileName);
+        }
+
+        var response = await ItemService.AddItemWithImagesAsync(formData);
+
+        if (response.IsSuccessStatusCode)
+        {
+            await ShowToast("Item added successfully!", "bg-success", "fas fa-check-circle");
+            item = new ItemWithImagesDto();
+            memoryFiles.Clear();
+            uploadInputs = new() { new UploadInput() };
+        }
+        else
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            await ShowToast($"Something went wrong: {errorContent}", "bg-danger", "fas fa-times-circle");
+        }
+    }
+
+    async Task ShowToast(string message, string color, string icon)
+    {
+        toastCts?.Cancel();
+        toastCts = new CancellationTokenSource();
+
+        toastMessage = message;
+        toastColor = color;
+        toastIcon = icon;
+        StateHasChanged();
+
+        try
+        {
+            await Task.Delay(4000, toastCts.Token);
+            toastMessage = null;
+            StateHasChanged();
+        }
+        catch (TaskCanceledException) { }
+    }
+}
