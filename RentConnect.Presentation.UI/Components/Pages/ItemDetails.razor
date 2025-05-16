@@ -18,6 +18,7 @@
 @using global::RentConnect.API.RentConnect.Presentation.DTOs
 @using global::RentConnect.Presentation.UI.IServices
 @using global::RentConnect.Presentation.UI.Services
+@implements IDisposable
 
 <PageTitle>Item Details</PageTitle>
 
@@ -169,6 +170,16 @@
         margin-bottom:  0.3rem;
     }
 
+    .flatpickr-day.booked-date {
+        background-color: #dc3545 !important; 
+        color: white;
+        cursor:  not-allowed;
+    }
+
+    #dateRangePicker:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110,  253,  0.25);
+    }
 </style>
 
 
@@ -269,7 +280,7 @@ else
 
                 @if (isAuthenticated)
                 {
-                    <button class="btn btn-success mt-3" @onclick="() => showBookingSection = true">Book This Item</button>
+                    <button class="btn btn-success mt-3" @onclick="ShowBookingSection">Book This Item</button>
                 }
                 else
                 {
@@ -289,14 +300,13 @@ else
                     <DataAnnotationsValidator />
                     <ValidationSummary />
 
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label"><i class="fas fa-calendar-day me-1 text-secondary"></i> Start Date</label>
-                            <InputDate class="form-control" @bind-Value="booking.StartDate" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label"><i class="fas fa-calendar-day me-1 text-secondary"></i> End Date</label>
-                            <InputDate class="form-control" @bind-Value="booking.EndDate" />
+                    <div class="mb-3 position-relative">
+                        <label class="form-label">Select Booking Dates</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white">
+                                <i class="fas fa-calendar-alt text-primary"></i>
+                            </span>
+                            <input type="text" id="dateRangePicker" class="form-control" placeholder="Choose a date range..." readonly />
                         </div>
                     </div>
 
@@ -311,23 +321,6 @@ else
                         <i class="fas fa-check-circle me-2"></i>Confirm Booking
                     </button>
                 </EditForm>
-
-                <div class="mt-4">
-                    <h6><i class="fas fa-ban text-danger me-2"></i>Unavailable Dates:</h6>
-                    @if (!unavailableDates.Any())
-                    {
-                        <p class="text-muted">No blocked dates yet.</p>
-                    }
-                    else
-                    {
-                        <div class="d-flex flex-wrap gap-2">
-                            @foreach (var d in unavailableDates.OrderBy(d => d))
-                            {
-                                <span class="badge bg-danger">@d.ToString("dd MMM yyyy")</span>
-                            }
-                        </div>
-                    }
-                </div>
             </div>
         }
 
@@ -390,6 +383,36 @@ else
     </div>
 }
 
+<script>
+    window.initDateRangePicker = function (unavailableDates, dotNetHelper) {
+        flatpickr("#dateRangePicker", {
+            mode: "range",
+            minDate: "today",
+            dateFormat: "Y-m-d",
+            disable: unavailableDates,
+            onDayCreate: function (dObj, dStr, fp, dayElem) {
+                const date = dayElem.dateObj;
+                const formatted = date.toISOString().split("T")[0];
+                if (unavailableDates.includes(formatted)) {
+                    dayElem.classList.add("booked-date");
+                }
+            },
+            onChange: function (selectedDates, dateStr, instance) {
+                if (selectedDates.length === 2) {
+                    dotNetHelper.invokeMethodAsync('UpdateBookingDates',
+                        selectedDates[0].toISOString(),
+                        selectedDates[1].toISOString()
+                    );
+                }
+            }
+        });
+    };
+
+</script>
+
+
+
+
 
 
 @code {
@@ -421,7 +444,20 @@ else
     private string? receiverId;
     private Dictionary<string, string> userNames = new();
 
+    private DotNetObjectReference<ItemDetails>? objRef;
 
+
+    private async Task ShowBookingSection()
+    {
+        showBookingSection = true;
+        await InvokeAsync(StateHasChanged); 
+
+        await Task.Delay(100); 
+
+        objRef = DotNetObjectReference.Create(this);
+        var formattedDates = unavailableDates.Select(d => d.ToString("yyyy-MM-dd")).ToList();
+        await JS.InvokeVoidAsync("initDateRangePicker", formattedDates, objRef);
+    }
 
     private void GoToMessages()
     {
@@ -457,7 +493,6 @@ else
         if (!isAuthenticated || item == null || currentUserId == null)
             return;
 
-        // إذا أنا صاحب المنتج، نرد على أول شخص كلمني (إذا فيه رسائل)
         if (currentUserId == item.OwnerId)
         {
             var allMessages = await ChatService.GetMessagesByItemAsync(id);
@@ -478,7 +513,7 @@ else
                 || m.SenderId == receiverId && m.ReceiverId == currentUserId).ToList();
         }
 
-        // اجمع كل IDs من الرسائل ما عدا نفسك
+        
         var userIds = messages
             .Select(m => m.SenderId)
             .Concat(messages.Select(m => m.ReceiverId))
@@ -486,7 +521,7 @@ else
             .Where(id => id != currentUserId)
             .ToList();
 
-        // جيب الأسماء من الـ API
+        
         foreach (var uid in userIds)
         {
             if (!userNames.ContainsKey(uid))
@@ -526,19 +561,48 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !isAuthenticated)
+        if (firstRender)
         {
-            var json = await JS.InvokeAsync<string>("localStorage.getItem", "favorites");
-            if (!string.IsNullOrWhiteSpace(json))
+   
+            if (!isAuthenticated)
             {
-                var localFavs = System.Text.Json.JsonSerializer.Deserialize<List<Guid>>(json);
-                isFavorite = localFavs?.Contains(id) ?? false;
-                StateHasChanged(); // نحدث الواجهة لأن القيمة تغيرت بعد أول رسم
+                var json = await JS.InvokeAsync<string>("localStorage.getItem", "favorites");
+                if (!string.IsNullOrWhiteSpace(json))
+                {
+                    var localFavs = System.Text.Json.JsonSerializer.Deserialize<List<Guid>>(json);
+                    isFavorite = localFavs?.Contains(id) ?? false;
+                    StateHasChanged(); 
+                }
             }
+
+    
+            var formattedDates = unavailableDates.Select(d => d.ToString("yyyy-MM-dd")).ToList();
+
+            objRef = DotNetObjectReference.Create(this);
+            //await JS.InvokeVoidAsync("initDateRangePicker", formattedDates, objRef);
         }
     }
+    
+
+    [JSInvokable]
+    public Task UpdateBookingDates(string start, string end)
+    {
+        booking.StartDate = DateTime.Parse(start);
+        booking.EndDate = DateTime.Parse(end);
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+
     private async Task SubmitBooking()
     {
+        if (booking.StartDate == default || booking.EndDate == default)
+        {
+            bookingMessage = "Please select a valid date range before confirming the booking.";
+            bookingSuccess = false;
+            return;
+        }
+
         booking.ItemId = id;
         booking.RenterId = currentUserId!;
         booking.Status = BookingStatus.Pending;
@@ -552,12 +616,13 @@ else
         }
 
         await BookingService.AddAsync(booking);
-        bookingMessage = "Your booking will be checked by the owner so please keep an aye on 'My Bookings' page !";
+        bookingMessage = "Your booking will be checked by the owner so please keep an eye on 'My Bookings' page!";
         bookingSuccess = true;
 
         booking = new(); // reset
-        await LoadUnavailableDates(); // refresh
+        await LoadUnavailableDates();
     }
+
 
     private async Task LoadUnavailableDates()
     {
@@ -654,5 +719,10 @@ else
         {
             message = $"Error submitting review: {ex.Message}";
         }
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
     }
 }
