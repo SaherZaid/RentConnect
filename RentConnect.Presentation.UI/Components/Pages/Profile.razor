@@ -241,14 +241,29 @@ else
             deleteMessage = "Item deleted successfully.";
             deleteSuccess = true;
         }
+        catch (HttpRequestException ex)
+        {
+    
+            if (ex.Message.Contains("bookings associated"))
+            {
+                deleteMessage = "You cannot delete this item because it has active bookings.";
+            }
+            else
+            {
+                deleteMessage = "Failed to delete the item. Please try again later.";
+            }
+
+            deleteSuccess = false;
+        }
         catch (Exception ex)
         {
-            deleteMessage = $"Failed to delete item: {ex.Message}";
+            deleteMessage = $"Unexpected error: {ex.Message}";
             deleteSuccess = false;
         }
 
-        showDeleteConfirmation = false;
+        showDeleteConfirmation = false;
     }
+
 
     private async Task UpdateProfile()
     {

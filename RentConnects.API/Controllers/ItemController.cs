@@ -208,10 +208,16 @@ namespace RentConnect.API.Controllers
             if (item == null)
                 return NotFound($"Item with ID {id} not found.");
 
+           
+            var bookings = await _unitOfWork.BookingRepository.GetByItemIdAsync(id);
+            if (bookings.Any())
+                return BadRequest("You cannot delete this item because there are bookings associated with it.");
+
             await _unitOfWork.ItemRepository.DeleteAsync(id);
             await _unitOfWork.CompleteAsync();
 
             return NoContent();
         }
+
     }
 }
