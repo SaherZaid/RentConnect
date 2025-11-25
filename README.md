@@ -4,7 +4,7 @@
 ![Blazor](https://img.shields.io/badge/Blazor-Server-blueviolet?style=flat-square)
 ![SQL Server](https://img.shields.io/badge/Database-SQL%20Server-red?style=flat-square)
 ![SignalR](https://img.shields.io/badge/Real--Time-SignalR-brightgreen?style=flat-square)
-![Status](https://img.shields.io/badge/Status-In%20Progress-orange?style=flat-square)
+
 
 ---
 
