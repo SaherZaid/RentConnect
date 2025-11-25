@@ -61,16 +61,6 @@ Throughout development, I explored different architectural patterns, experimente
 
 ---
 
-## 📌 Future Roadmap
-
-- Mobile-friendly UI and responsive layout  
-- Payment system integration  
-- Rating & review system  
-- Advanced search and filters  
-- Deployment and public access version  
-
----
-
 ## 🤝 Contact
 
 If you'd like to see more, collaborate, or contribute ideas — you're welcome to reach out.
