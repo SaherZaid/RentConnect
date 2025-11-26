@@ -29,6 +29,17 @@ This creates a *community sharing ecosystem* that encourages sustainability and 
 
 ---
 
+## 🧩 Key Features
+
+✔ User registration & authentication  
+✔ Real-time chat between renters and item owners  
+✔ Booking calendar with blocked and reserved dates  
+✔ Email notifications and request confirmations  
+✔ Organized dashboard for managing rentals and listings  
+✔ Item listing with images, pricing, and availability  
+
+---
+
 ## 🛠️ Tech Stack
 
 - *.NET 8*
@@ -38,17 +49,6 @@ This creates a *community sharing ecosystem* that encourages sustainability and 
 - *SignalR* (real-time communication)
 - *Gmail SMTP* (automatic email notifications)
 - *JavaScript* (UI interaction and booking calendar features)
-
----
-
-## 🧩 Key Features
-
-✔ User registration & authentication  
-✔ Item listing with images, pricing, and availability  
-✔ Real-time chat between renters and item owners  
-✔ Booking calendar with blocked and reserved dates  
-✔ Email notifications and request confirmations  
-✔ Organized dashboard for managing rentals and listings  
 
 ---
 
