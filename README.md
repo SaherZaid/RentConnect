@@ -65,4 +65,8 @@ Throughout development, I explored different architectural patterns, experimente
 
 If you'd like to see more, collaborate, or contribute ideas — you're welcome to reach out.
 
+📧 Email: *Saherzaid1997@email.com*  
+🔗 LinkedIn: **https://www.linkedin.com/in/saher-zaid-4584842a7/**  
+📞 Phone: *+46 738 785 036*
+
 ---
