@@ -1,0 +1,177 @@
+﻿@page "/Account/Login"
+
+@using System.ComponentModel.DataAnnotations
+@using global::RentConnect.API.RentConnect.Domain.Models
+@using global::RentConnect.Presentation.UI.Components.Account.Shared
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
+
+@inject SignInManager<ApplicationUser> SignInManager
+@inject ILogger<Login> Logger
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Log in</PageTitle>
+
+<style>
+    body {
+        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+        color: white;
+    }
+
+    .login-container {
+        max-width: 420px;
+        margin: 5rem auto;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 1rem;
+        box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        backdrop-filter: blur(8px);
+    }
+
+        .login-container h2 {
+            text-align: center;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+
+    .form-control, .form-check-input {
+        background-color: rgba(255,255,255,0.1);
+        color: white;
+        border: 1px solid #aaa;
+    }
+
+        .form-control::placeholder {
+            color: #ccc;
+        }
+
+    .form-label {
+        color: #ddd;
+    }
+
+    a {
+        color: #ffc107;
+    }
+
+        a:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+
+    .btn-primary {
+        background-color: #0d6efd;
+        border: none;
+    }
+
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+        }
+
+    .text-danger {
+        color: #f88 !important;
+    }
+</style>
+
+<div class="login-container">
+    <StatusMessage Message="@errorMessage" />
+
+    <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
+        <DataAnnotationsValidator />
+        <h2>Welcome back</h2>
+        <ValidationSummary class="text-danger" role="alert" />
+
+        <div class="form-floating mb-3">
+            <InputText @bind-Value="Input.Email" class="form-control" placeholder="name@example.com" autocomplete="username" />
+            <label>Email</label>
+            <ValidationMessage For="@(() => Input.Email)" class="text-danger" />
+        </div>
+
+        <div class="form-floating mb-3">
+            <InputText type="password" @bind-Value="Input.Password" class="form-control" placeholder="Password" autocomplete="current-password" />
+            <label>Password</label>
+            <ValidationMessage For="@(() => Input.Password)" class="text-danger" />
+        </div>
+
+        <div class="form-check mb-3">
+            <InputCheckbox @bind-Value="Input.RememberMe" class="form-check-input" />
+            <label class="form-check-label">Remember me</label>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 mb-3">Log in</button>
+
+        <div class="text-center">
+            <p><a href="/Account/ForgotPassword">Forgot your password?</a></p>
+            <p><a href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Register as a new user</a></p>
+            <p><a href="/Account/ResendEmailConfirmation">Resend email confirmation</a></p>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private string? errorMessage;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (HttpMethods.IsGet(HttpContext.Request.Method))
+        {
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        }
+    }
+
+    public async Task LoginUser()
+    {
+        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+
+        if (result.Succeeded)
+        {
+            Logger.LogInformation("User logged in.");
+            var user = await SignInManager.UserManager.FindByEmailAsync(Input.Email);
+            if (user != null && await SignInManager.UserManager.IsInRoleAsync(user, "Admin"))
+            {
+                NavigationManager.NavigateTo("/Admin/Users"); // Admin homepage
+            }
+            else
+            {
+                NavigationManager.NavigateTo(ReturnUrl ?? "/"); // User homepage or fallback
+            }
+        }
+        else if (result.RequiresTwoFactor)
+        {
+            RedirectManager.RedirectTo(
+                "Account/LoginWith2fa",
+                new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
+        }
+        else if (result.IsLockedOut)
+        {
+            Logger.LogWarning("User account locked out.");
+            RedirectManager.RedirectTo("Account/Lockout");
+        }
+        else
+        {
+            errorMessage = "Error: Invalid login attempt.";
+        }
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [Display(Name = "Remember me?")]
+        public bool RememberMe { get; set; }
+    }
+}

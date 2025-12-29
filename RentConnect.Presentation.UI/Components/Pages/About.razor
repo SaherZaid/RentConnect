@@ -1,0 +1,710 @@
+﻿@page "/about"
+@rendermode InteractiveServer
+
+<PageTitle>About RentConnect</PageTitle>
+
+<style>
+    .about-hero {
+        background: radial-gradient(circle at top left, #eff6ff 0, #ffffff 45%, #eef2ff 100%);
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .about-hero-inner {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 3.5rem 1.5rem 3rem;
+    }
+
+    .about-kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #6366f1;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+    }
+
+    .about-title {
+        font-size: clamp(2rem, 3vw, 2.6rem);
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.75rem;
+    }
+
+    .about-subtitle {
+        max-width: 620px;
+        color: #64748b;
+        font-size: 0.98rem;
+    }
+
+    .about-highlight-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.8rem;
+        border-radius: 999px;
+        background-color: #e0f2fe;
+        color: #0369a1;
+        font-size: 0.8rem;
+        margin-top: 1.25rem;
+    }
+
+        .about-highlight-pill i {
+            font-size: 0.95rem;
+        }
+
+    .about-hero-grid {
+        margin-top: 2.5rem;
+        display: grid;
+        grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.4fr);
+        gap: 1.75rem;
+        align-items: center;
+    }
+
+    .about-hero-card {
+        background-color: #ffffff;
+        border-radius: 1.25rem;
+        padding: 1.6rem 1.5rem;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .about-bullet {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin-bottom: 0.85rem;
+    }
+
+    .about-bullet-icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #eef2ff;
+        color: #4f46e5;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .about-bullet-title {
+        font-size: 0.92rem;
+        font-weight: 600;
+        color: #0f172a;
+    }
+
+    .about-bullet-text {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin-bottom: 0;
+    }
+
+    .about-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin-top: 1.2rem;
+    }
+
+    .about-stat {
+        padding: 0.7rem 0.9rem;
+        border-radius: 0.9rem;
+        background-color: #f9fafb;
+    }
+
+    .about-stat-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: #9ca3af;
+        letter-spacing: 0.12em;
+        margin-bottom: 0.1rem;
+    }
+
+    .about-stat-value {
+        font-weight: 700;
+        color: #111827;
+        font-size: 0.98rem;
+    }
+
+    .about-hero-side-box {
+        background: linear-gradient(145deg, #2563eb, #4f46e5);
+        color: #e5e7eb;
+        border-radius: 1.3rem;
+        padding: 1.6rem 1.5rem;
+        box-shadow: 0 18px 45px rgba(37, 99, 235, 0.38);
+    }
+
+    .about-hero-side-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 0.65rem;
+    }
+
+    .about-hero-side-text {
+        font-size: 0.9rem;
+        color: #e5e7eb;
+        margin-bottom: 1.1rem;
+    }
+
+    .about-tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-bottom: 1.1rem;
+    }
+
+    .about-tag {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.7rem;
+        border-radius: 999px;
+        background-color: rgba(15, 23, 42, 0.15);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .about-cta-note {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.78rem;
+        color: #cbd5f5;
+    }
+
+        .about-cta-note i {
+            font-size: 0.9rem;
+        }
+
+    .about-btn-primary {
+        border-radius: 999px;
+        padding-inline: 1.75rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .about-btn-outline {
+        border-radius: 999px;
+        font-size: 0.86rem;
+        padding-inline: 1.15rem;
+    }
+
+    /* === Sections === */
+
+    .about-section {
+        padding: 3rem 1.5rem;
+    }
+
+    .about-section-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    .about-section-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .about-section-kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #6366f1;
+        font-weight: 700;
+        margin-bottom: 0.3rem;
+    }
+
+    .about-section-title {
+        font-weight: 700;
+        font-size: 1.5rem;
+        color: #0f172a;
+        margin-bottom: 0.2rem;
+    }
+
+    .about-section-subtitle {
+        color: #6b7280;
+        font-size: 0.92rem;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .about-how-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.25rem;
+    }
+
+    .about-step-card {
+        background-color: #ffffff;
+        border-radius: 1rem;
+        padding: 1.25rem 1.2rem;
+        border: 1px solid rgba(209, 213, 219, 0.7);
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05);
+        height: 100%;
+    }
+
+    .about-step-badge {
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        background-color: #eef2ff;
+        color: #4f46e5;
+        font-weight: 700;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 0.7rem;
+    }
+
+    .about-step-title {
+        font-size: 0.98rem;
+        font-weight: 600;
+        margin-bottom: 0.4rem;
+        color: #111827;
+    }
+
+    .about-step-text {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin-bottom: 0;
+    }
+
+    .about-why-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.5fr);
+        gap: 1.75rem;
+        align-items: flex-start;
+    }
+
+    .about-why-card {
+        background-color: #ffffff;
+        border-radius: 1.2rem;
+        padding: 1.35rem 1.4rem;
+        border: 1px solid rgba(209, 213, 219, 0.7);
+    }
+
+    .about-why-item {
+        display: flex;
+        gap: 0.7rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .about-why-icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #ecfdf3;
+        color: #16a34a;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .about-why-label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .about-why-text {
+        font-size: 0.88rem;
+        color: #6b7280;
+        margin-bottom: 0;
+    }
+
+    .about-faq-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.5fr);
+        gap: 1.25rem;
+    }
+
+    .about-faq-item {
+        border-radius: 0.9rem;
+        background-color: #f9fafb;
+        padding: 1rem 1.1rem;
+    }
+
+    .about-faq-q {
+        font-size: 0.92rem;
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 0.35rem;
+    }
+
+    .about-faq-a {
+        font-size: 0.88rem;
+        color: #6b7280;
+        margin-bottom: 0;
+    }
+
+    .about-footer-cta {
+        background: linear-gradient(135deg, #111827, #020617);
+        border-radius: 1.4rem;
+        padding: 1.7rem 1.5rem;
+        color: #e5e7eb;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-top: 3rem;
+    }
+
+        .about-footer-cta h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+        }
+
+        .about-footer-cta p {
+            font-size: 0.88rem;
+            margin-bottom: 0;
+            color: #9ca3af;
+        }
+
+    @@media (max-width: 992px) {
+        .about-hero-inner
+
+    {
+        padding-top: 2.25rem;
+    }
+
+    .about-hero-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .about-hero-side-box {
+        order: -1;
+    }
+
+    .about-how-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .about-why-grid,
+    .about-faq-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    }
+
+    @@media (max-width: 768px) {
+        .about-how-grid
+
+    {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .about-section {
+        padding-inline: 1rem;
+    }
+
+    }
+</style>
+
+<div class="about-hero">
+    <div class="about-hero-inner">
+        <div class="about-kicker">ABOUT RENTCONNECT</div>
+        <h1 class="about-title">
+            A smarter way to access the things you need.
+        </h1>
+        <p class="about-subtitle">
+            RentConnect helps people share items in their city – from cameras and tools to party gear and camping sets.
+            Instead of buying once and forgetting, you can rent when you need and earn when you don’t.
+        </p>
+
+        <span class="about-highlight-pill">
+            <i class="bi bi-stars"></i>
+            Built for everyday people, not just “power users”.
+        </span>
+
+        <div class="about-hero-grid">
+            <!-- Left card: bullets + stats -->
+            <div class="about-hero-card mt-3 mt-md-4">
+                <div class="about-bullet">
+                    <div class="about-bullet-icon">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                    <div>
+                        <div class="about-bullet-title">Community-first renting</div>
+                        <p class="about-bullet-text">
+                            Connect directly with people around you. See item details, reviews, and clear pricing before you decide.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="about-bullet">
+                    <div class="about-bullet-icon">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <div>
+                        <div class="about-bullet-title">Transparent and safe</div>
+                        <p class="about-bullet-text">
+                            Bookings, messages, and item details all live in one place – so both sides know exactly what to expect.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="about-bullet mb-0">
+                    <div class="about-bullet-icon">
+                        <i class="bi bi-recycle"></i>
+                    </div>
+                    <div>
+                        <div class="about-bullet-title">Better for your wallet and the planet</div>
+                        <p class="about-bullet-text">
+                            Renting instead of buying helps reduce waste and gives idle items a second life.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="about-stat-grid">
+                    <div class="about-stat">
+                        <div class="about-stat-label">For renters</div>
+                        <div class="about-stat-value">Find items in minutes</div>
+                    </div>
+                    <div class="about-stat">
+                        <div class="about-stat-label">For owners</div>
+                        <div class="about-stat-value">Turn things into income</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right colored box -->
+            <div class="about-hero-side-box mt-3 mt-md-4">
+                <div class="about-hero-side-title">
+                    Why we built RentConnect
+                </div>
+                <p class="about-hero-side-text">
+                    We noticed the same pattern everywhere: people buying expensive items,
+                    using them a few times, then leaving them in storage. At the same time,
+                    others were struggling to afford or justify buying those exact items.
+                    RentConnect was built to bridge that gap.
+                </p>
+
+                <div class="about-tag-list">
+                    <span class="about-tag">City-based rentals</span>
+                    <span class="about-tag">Direct messaging</span>
+                    <span class="about-tag">Flexible bookings</span>
+                    <span class="about-tag">Shippable & pickup</span>
+                </div>
+
+                <div class="d-flex align-items-center gap-2 mt-2 mb-2">
+                    <a href="/items" class="btn btn-light about-btn-primary">
+                        Browse items
+                        <i class="bi bi-arrow-right-short"></i>
+                    </a>
+                    <a href="/additems" class="btn btn-outline-light about-btn-outline">
+                        List your first item
+                    </a>
+                </div>
+
+                <div class="about-cta-note mt-1">
+                    <i class="bi bi-info-circle"></i>
+                    <span>No subscription required – you only interact when you rent or list items.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- How it works -->
+<section class="about-section bg-white">
+    <div class="about-section-inner">
+        <div class="about-section-header">
+            <div class="about-section-kicker">HOW IT WORKS</div>
+            <h2 class="about-section-title">Simple for both renters and owners</h2>
+            <p class="about-section-subtitle">
+                We designed RentConnect so that you don’t need a manual. Three core steps cover almost every use case.
+            </p>
+        </div>
+
+        <div class="about-how-grid">
+            <div class="about-step-card">
+                <div class="about-step-badge">1</div>
+                <div class="about-step-title">Search for what you need</div>
+                <p class="about-step-text">
+                    Use smart search, categories, and city filters to find the right item – from daily essentials to special-occasion gear.
+                </p>
+            </div>
+
+            <div class="about-step-card">
+                <div class="about-step-badge">2</div>
+                <div class="about-step-title">Chat with the owner</div>
+                <p class="about-step-text">
+                    Ask questions, confirm details, and agree on pickup or shipping using the built-in messaging system.
+                </p>
+            </div>
+
+            <div class="about-step-card">
+                <div class="about-step-badge">3</div>
+                <div class="about-step-title">Book and enjoy</div>
+                <p class="about-step-text">
+                    Send a booking request for the dates you need. Once it’s confirmed, you’re ready to go – simple as that.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- For renters / owners -->
+<section class="about-section" style="background-color: #f9fafb;">
+    <div class="about-section-inner">
+        <div class="about-section-header">
+            <div class="about-section-kicker">FOR EVERYONE</div>
+            <h2 class="about-section-title">Whether you rent or own – you benefit</h2>
+            <p class="about-section-subtitle">
+                RentConnect is built to be fair for both sides. If you only rent, great. If you want to list items, even better.
+            </p>
+        </div>
+
+        <div class="about-why-grid">
+            <div class="about-why-card">
+                <h5 class="mb-3">For renters</h5>
+
+                <div class="about-why-item">
+                    <div class="about-why-icon">
+                        <i class="bi bi-search"></i>
+                    </div>
+                    <div>
+                        <div class="about-why-label">Access, not ownership</div>
+                        <p class="about-why-text">
+                            Get what you need only when you actually need it – no long-term commitment, no storage problem.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="about-why-item">
+                    <div class="about-why-icon">
+                        <i class="bi bi-cash-coin"></i>
+                    </div>
+                    <div>
+                        <div class="about-why-label">Save money on rarely used items</div>
+                        <p class="about-why-text">
+                            Perfect for occasional use items like cameras, lenses, drills, party equipment, and more.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="about-why-item mb-0">
+                    <div class="about-why-icon">
+                        <i class="bi bi-chat-dots"></i>
+                    </div>
+                    <div>
+                        <div class="about-why-label">Clear communication</div>
+                        <p class="about-why-text">
+                            Chat with owners before booking, so expectations match on both sides.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="about-why-card">
+                <h5 class="mb-3">For owners</h5>
+
+                <div class="about-why-item">
+                    <div class="about-why-icon">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </div>
+                    <div>
+                        <div class="about-why-label">Earn from things you already own</div>
+                        <p class="about-why-text">
+                            Turn your underused items into an extra income stream without needing to be a full-time business.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="about-why-item">
+                    <div class="about-why-icon">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
+                    <div>
+                        <div class="about-why-label">Control your availability</div>
+                        <p class="about-why-text">
+                            You decide when items are available, what price feels fair, and which requests to accept.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="about-why-item mb-0">
+                    <div class="about-why-icon">
+                        <i class="bi bi-shield-lock"></i>
+                    </div>
+                    <div>
+                        <div class="about-why-label">Stay in control</div>
+                        <p class="about-why-text">
+                            All requests, bookings, and conversations are logged – so you can always see what’s happening with your items.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="mt-5">
+            <div class="about-section-header mb-3">
+                <div class="about-section-kicker">FAQ</div>
+                <h2 class="about-section-title">Common questions</h2>
+                <p class="about-section-subtitle">
+                    Just getting started? Here are a few quick answers.
+                </p>
+            </div>
+
+            <div class="about-faq-grid">
+                <div class="about-faq-item">
+                    <div class="about-faq-q">Do I need an account to use RentConnect?</div>
+                    <p class="about-faq-a">
+                        You can browse items without an account, but you’ll need to sign up to book items,
+                        chat with owners, or list your own items.
+                    </p>
+                </div>
+
+                <div class="about-faq-item">
+                    <div class="about-faq-q">How do bookings work?</div>
+                    <p class="about-faq-a">
+                        You send a booking request for specific dates. The owner reviews it and either confirms
+                        or declines. You can always see the status on your bookings page.
+                    </p>
+                </div>
+
+                <div class="about-faq-item">
+                    <div class="about-faq-q">Can owners ship items, or is it pickup only?</div>
+                    <p class="about-faq-a">
+                        Both options exist. Some items are marked as “Shippable”, others are pickup only.
+                        You’ll always see this clearly on the item details page.
+                    </p>
+                </div>
+
+                <div class="about-faq-item">
+                    <div class="about-faq-q">Is RentConnect available in every city?</div>
+                    <p class="about-faq-a">
+                        RentConnect is built to work city by city. Availability depends on how many people
+                        list items in your area – the more the community grows, the better it gets.
+                    </p>
+                </div>
+            </div>
+
+            <div class="about-footer-cta">
+                <div>
+                    <h3>Ready to try RentConnect?</h3>
+                    <p>
+                        Start by browsing what’s already available – or list your first item and see who needs it.
+                    </p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="/items" class="btn btn-primary about-btn-primary">
+                        Explore items
+                        <i class="bi bi-arrow-right-short"></i>
+                    </a>
+                    <a href="/additems" class="btn btn-outline-light about-btn-outline">
+                        List an item
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

@@ -1,0 +1,423 @@
+﻿@page "/additems"
+@rendermode InteractiveServer
+@inject NavigationManager NavManager
+@inject IItemService ItemService
+@inject ICategoryService CategoryService
+@inject AuthenticationStateProvider AuthProvider
+
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Authorization
+@using global::RentConnect.Presentation.UI.RentConnect.Presentation.DTOs
+@using global::RentConnect.Presentation.UI.IServices
+
+<PageTitle>Add Item</PageTitle>
+
+<style>
+    .form-container {
+        max-width: 700px;
+        margin: 3rem auto;
+        background: #ffffff;
+        padding: 2.5rem;
+        border-radius: 1rem;
+        box-shadow: 0 18px 35px rgba(15,23,42,0.13);
+    }
+
+        .form-container h3 {
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #0f172a;
+        }
+
+        .form-container .form-control,
+        .form-container .form-select {
+            background-color: #f8fafc;
+            border-radius: 8px;
+            border-color: #e2e8f0;
+        }
+
+            .form-container .form-control:focus,
+            .form-container .form-select:focus {
+                box-shadow: 0 0 0 1px #2563eb33;
+                border-color: #2563eb;
+            }
+
+        .form-container textarea {
+            min-height: 120px;
+        }
+
+    .section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #0f172a;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .section-hint {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-bottom: .75rem;
+    }
+
+    .img-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill,minmax(120px,1fr));
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .img-card {
+        position: relative;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #0f172a;
+    }
+
+        .img-card img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .img-card button {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            border-radius: 999px;
+            padding: .15rem .4rem;
+            font-size: .75rem;
+        }
+
+    /* ⬇⬇ أهم تعديل هنا */
+    .upload-dropzone {
+        border: 1px dashed #cbd5f5;
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+        background: #f9fafb;
+        cursor: pointer;
+        transition: background .15s ease,border-color .15s ease;
+        position: relative; /* عشان الـ InputFile المطلق يتقيّد داخلها بس */
+        overflow: hidden;
+    }
+
+        .upload-dropzone:hover {
+            background: #eff6ff;
+            border-color: #2563eb;
+        }
+
+        .upload-dropzone i {
+            font-size: 1.6rem;
+            color: #2563eb;
+            display: block;
+            margin-bottom: 0.35rem;
+        }
+
+        .upload-dropzone span {
+            font-size: .9rem;
+            color: #4b5563;
+        }
+
+    .form-actions {
+        display: flex;
+        flex-direction: column;
+        gap: .75rem;
+        margin-top: 1.5rem;
+    }
+
+        .form-actions .btn-primary {
+            border-radius: 999px;
+            font-weight: 600;
+            padding: .6rem 1.4rem;
+        }
+
+    .toast-container {
+        z-index: 1055;
+    }
+
+    @@media (max-width: 576px) {
+        .form-container {
+            margin: 1.5rem 1rem;
+            padding: 1.75rem 1.4rem;
+        }
+    }
+</style>
+
+<div class="form-container">
+    <AuthorizeView Context="authContext">
+        <Authorized>
+            <h3>Add New Item</h3>
+
+            <EditForm Model="item" OnValidSubmit="SubmitItem">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-3">
+                    <InputText class="form-control" @bind-Value="item.Name" placeholder="Item name" />
+                </div>
+
+                <div class="mb-3">
+                    <InputTextArea class="form-control" @bind-Value="item.Description" placeholder="Description" />
+                </div>
+
+                <div class="mb-3">
+                    <InputNumber class="form-control" @bind-Value="item.PricePerDay" placeholder="Price per day" />
+                </div>
+
+                <div class="mb-3">
+                    <select class="form-select" @bind="item.CategoryId">
+                        <option value="@Guid.Empty">-- Select a category --</option>
+                        @foreach (var category in categories)
+                        {
+                            <option value="@category.Id">@category.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <select class="form-select" @bind="item.City" required>
+                        <option value="">-- Select a city --</option>
+                        @foreach (var city in allCities)
+                        {
+                            <option value="@city">@city</option>
+                        }
+                    </select>
+                    <div class="invalid-feedback">City is required.</div>
+                </div>
+
+                <div class="mb-3 form-check">
+                    <InputCheckbox class="form-check-input" @bind-Value="item.IsShippable" />
+                    <label class="form-check-label">Shippable?</label>
+                </div>
+
+                <div class="mb-3">
+                    <InputTextArea class="form-control" @bind-Value="item.Notes" placeholder="Additional notes (optional)" />
+                </div>
+
+                <!-- صور المنتج -->
+                <div class="section-title">Images</div>
+                <div class="section-hint">
+                    You can upload multiple images (JPG, PNG, GIF, WEBP, HEIC…) with any size or orientation.
+                    Max 10MB per image.
+                </div>
+
+                @if (memoryFiles.Any())
+                {
+                    <div class="img-grid">
+                        @foreach (var file in memoryFiles.Select((f, i) => new { f, i }))
+                        {
+                            <div class="img-card">
+                                <img src="@($"data:{file.f.ContentType};base64,{Convert.ToBase64String(file.f.Content)}")" />
+                                <button type="button"
+                                        class="btn btn-sm btn-light"
+                                        title="Remove image"
+                                        @onclick="() => RemoveImage(file.i)">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <label class="upload-dropzone">
+                    <i class="bi bi-cloud-arrow-up-fill"></i>
+                    <span>
+                        Click to choose images or drag & drop (up to 20)
+                    </span>
+
+                    <!-- ⬇⬇ input يغطي فقط منطقة الـ dropzone -->
+                    <InputFile OnChange="HandleFilesUpload"
+                               multiple
+                               accept="image/*"
+                               style="opacity:0; position:absolute; inset:0; cursor:pointer;" />
+                </label>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i> Submit item
+                    </button>
+                </div>
+            </EditForm>
+        </Authorized>
+        <NotAuthorized>
+            <div class="alert alert-warning text-center">
+                Please <a href="/Account/Login">log in</a> to add an item.
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+
+    <!-- Toast -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        @if (!string.IsNullOrEmpty(toastMessage))
+        {
+            <div class="toast show text-white @toastColor border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="@toastIcon me-2"></i> @toastMessage
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="()=>toastMessage=null"></button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    ItemWithImagesDto item = new();
+    List<CategoryDto> categories = new();
+
+    List<(string FileName, string ContentType, byte[] Content)> memoryFiles = new();
+
+    string? toastMessage;
+    string toastColor = "bg-success";
+    string toastIcon = "fas fa-check-circle";
+    CancellationTokenSource toastCts = new();
+
+    List<string> allCities = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = (await CategoryService.GetAllCategoriesAsync()).ToList();
+
+        var items = await ItemService.GetAllAsync();
+        allCities = items
+            .Where(i => !string.IsNullOrWhiteSpace(i.City))
+            .Select(i => i.City!)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToList();
+    }
+
+    async Task HandleFilesUpload(InputFileChangeEventArgs e)
+    {
+        const long maxFileSize = 10 * 1024 * 1024;
+        const int maxFiles = 20;
+
+        var selectedFiles = e.GetMultipleFiles(maxFiles);
+
+        foreach (var file in selectedFiles)
+        {
+            var lowerName = file.Name.ToLowerInvariant();
+            var contentType = file.ContentType?.ToLowerInvariant() ?? "";
+
+            var isImageMime = contentType.StartsWith("image/");
+            var isKnownExt =
+                lowerName.EndsWith(".jpg") ||
+                lowerName.EndsWith(".jpeg") ||
+                lowerName.EndsWith(".png") ||
+                lowerName.EndsWith(".gif") ||
+                lowerName.EndsWith(".webp") ||
+                lowerName.EndsWith(".heic") ||
+                lowerName.EndsWith(".heif");
+
+            if (!isImageMime && !isKnownExt)
+            {
+                await ShowToast($"File '{file.Name}' is not a supported image type.", "bg-danger", "fas fa-exclamation-triangle");
+                continue;
+            }
+
+            try
+            {
+                using var ms = new MemoryStream();
+                await file.OpenReadStream(maxAllowedSize: maxFileSize).CopyToAsync(ms);
+                memoryFiles.Add((file.Name, file.ContentType, ms.ToArray()));
+            }
+            catch
+            {
+                await ShowToast($"Could not load '{file.Name}' (maybe too large).", "bg-danger", "fas fa-exclamation-circle");
+            }
+        }
+    }
+
+    void RemoveImage(int index)
+    {
+        if (index >= 0 && index < memoryFiles.Count)
+            memoryFiles.RemoveAt(index);
+    }
+
+    async Task SubmitItem()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var ownerId = user.FindFirst(c => c.Type == "sub")?.Value
+                   ?? user.FindFirst(c => c.Type.Contains("nameidentifier"))?.Value;
+
+        if (string.IsNullOrWhiteSpace(ownerId))
+        {
+            await ShowToast("Unable to detect user identity.", "bg-danger", "fas fa-exclamation-circle");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(item.Name) ||
+    string.IsNullOrWhiteSpace(item.Description) ||
+    string.IsNullOrWhiteSpace(item.City) ||
+    item.PricePerDay <= 0 ||
+    item.CategoryId == Guid.Empty)
+
+        {
+            await ShowToast("Please fill all required fields.", "bg-danger", "fas fa-exclamation-triangle");
+            return;
+        }
+
+        item.OwnerId = ownerId;
+
+        var formData = new MultipartFormDataContent();
+        formData.Add(new StringContent(item.Name), "Name");
+        formData.Add(new StringContent(item.Description), "Description");
+        formData.Add(new StringContent(item.PricePerDay.ToString()), "PricePerDay");
+        formData.Add(new StringContent(item.OwnerId), "OwnerId");
+        formData.Add(new StringContent(item.CategoryId.ToString()), "CategoryId");
+        formData.Add(new StringContent(item.IsShippable.ToString()), "IsShippable");
+
+        formData.Add(new StringContent(item.City), "City");
+
+        if (!string.IsNullOrWhiteSpace(item.Notes))
+            formData.Add(new StringContent(item.Notes), "Notes");
+
+        foreach (var file in memoryFiles)
+        {
+            var fileContent = new ByteArrayContent(file.Content);
+            fileContent.Headers.ContentType =
+                new System.Net.Http.Headers.MediaTypeHeaderValue(
+                    string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType);
+
+            formData.Add(fileContent, "Images", file.FileName);
+        }
+
+        var response = await ItemService.AddItemWithImagesAsync(formData);
+
+        if (response.IsSuccessStatusCode)
+        {
+            await ShowToast("Item added successfully!", "bg-success", "fas fa-check-circle");
+            item = new ItemWithImagesDto();
+            memoryFiles.Clear();
+        }
+        else
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            await ShowToast($"Something went wrong: {errorContent}", "bg-danger", "fas fa-times-circle");
+        }
+    }
+
+    async Task ShowToast(string message, string color, string icon)
+    {
+        toastCts?.Cancel();
+        toastCts = new CancellationTokenSource();
+
+        toastMessage = message;
+        toastColor = color;
+        toastIcon = icon;
+        StateHasChanged();
+
+        try
+        {
+            await Task.Delay(4000, toastCts.Token);
+            toastMessage = null;
+            StateHasChanged();
+        }
+        catch (TaskCanceledException) { }
+    }
+}

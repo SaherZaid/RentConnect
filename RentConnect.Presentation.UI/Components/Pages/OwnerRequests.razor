@@ -1,0 +1,166 @@
+﻿@page "/my-bookings/owner"
+@inject IBookingService BookingService
+@inject NavigationManager NavManager
+@inject IChatService ChatService
+@inject AuthenticationStateProvider AuthProvider
+@using global::RentConnect.Presentation.UI.RentConnect.Presentation.DTOs
+@using global::RentConnect.API.Enums
+@using global::RentConnect.Presentation.UI.IServices
+@using global::RentConnect.Presentation.UI.Services
+@rendermode InteractiveServer
+
+<PageTitle>Incoming Booking Requests</PageTitle>
+
+<style>
+    .booking-table-container {
+        max-width: 1000px;
+        margin: auto;
+        background-color: #fff;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+
+    .table th,
+    .table td {
+        vertical-align: middle;
+    }
+
+    .badge {
+        font-size: 0.9rem;
+    }
+
+    .table th {
+        background-color: #f8f9fa;
+    }
+
+    .btn-sm {
+        min-width: 80px;
+    }
+
+    .text-muted small {
+        font-size: 0.8rem;
+    }
+</style>
+
+<div class="container my-5">
+    <div class="booking-table-container">
+        <h3 class="mb-4 text-center">Incoming Booking Requests</h3>
+
+        @if (!isAuthenticated)
+        {
+            <div class="alert alert-warning text-center">
+                Please log in to see your bookings.
+            </div>
+        }
+        else if (bookings == null)
+        {
+            <p class="text-center text-muted">Loading...</p>
+        }
+        else if (!bookings.Any())
+        {
+            <p class="text-muted text-center">No pending bookings for your items.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle text-center">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Item</th>
+                            <th>Renter Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Date Range</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var booking in bookings)
+                        {
+                            <tr>
+                                <td>@booking.ItemName</td>
+                                <td>
+                                    <strong>@booking.RenterName</strong><br />
+                                    <small class="text-muted">@booking.RenterId</small>
+                                </td>
+                                <td>@booking.RenterEmail</td>
+                                <td>@booking.RenterPhone</td>
+                                <td>@booking.StartDate.ToShortDateString() - @booking.EndDate.ToShortDateString()</td>
+                                <td>
+                                    @if (booking.Status == BookingStatus.Pending)
+                                    {
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    }
+                                    else if (booking.Status == BookingStatus.Confirmed)
+                                    {
+                                        <span class="badge bg-success">Confirmed</span>
+                                    }
+                                    else if (booking.Status == BookingStatus.Declined)
+                                    {
+                                        <span class="badge bg-danger">Declined</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="d-flex justify-content-center gap-2">
+                                        <button class="btn btn-success btn-sm" @onclick="@(() => Confirm(booking))">Confirm</button>
+                                        <button class="btn btn-danger btn-sm" @onclick="@(() => Decline(booking))">Decline</button>
+                                        <button class="btn btn-outline-primary btn-sm" @onclick="@(() => StartChat(booking.ItemId, booking.RenterId))">
+                                            <i class="fas fa-comment-dots"></i> Send a message
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<BookingDto> bookings = new();
+    private string? ownerId;
+    private bool isAuthenticated;
+
+
+    private async Task StartChat(Guid itemId, string renterId)
+    {
+        if (string.IsNullOrWhiteSpace(ownerId)) return;
+
+        var conversation = await ChatService.GetOrCreateConversationAsync(itemId, ownerId, renterId);
+        if (conversation != null)
+        {
+            NavManager.NavigateTo($"/messages?cid={conversation.ConversationId}");
+        }
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        isAuthenticated = user.Identity?.IsAuthenticated ?? false;
+        if (!isAuthenticated) return;
+
+        ownerId = user.FindFirst(c => c.Type == "sub")?.Value
+               ?? user.FindFirst(c => c.Type.Contains("nameidentifier"))?.Value;
+
+        bookings = (await BookingService.GetPendingForOwnerAsync(ownerId!)).ToList();
+    }
+
+    private async Task Confirm(BookingDto booking)
+    {
+        await BookingService.ApproveAsync(booking.Id);
+        bookings.Remove(booking);
+    }
+
+    private async Task Decline(BookingDto booking)
+    {
+        await BookingService.DeclineAsync(booking.Id);
+        bookings.Remove(booking);
+    }
+}

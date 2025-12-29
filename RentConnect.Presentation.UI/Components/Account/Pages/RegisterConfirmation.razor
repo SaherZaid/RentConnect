@@ -1,0 +1,126 @@
+﻿@page "/Account/RegisterConfirmation"
+
+@using System.Text
+@using global::RentConnect.API.RentConnect.Domain.Models
+@using global::RentConnect.Presentation.UI.Components.Account.Shared
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+
+@inject UserManager<ApplicationUser> UserManager
+@inject IEmailSender<ApplicationUser> EmailSender
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Register Confirmation</PageTitle>
+
+<style>
+    body {
+        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+        color: white;
+    }
+
+    .login-container {
+        max-width: 500px;
+        margin: 5rem auto;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 1rem;
+        box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        backdrop-filter: blur(8px);
+        text-align: center;
+    }
+
+    h1 {
+        color: #fff;
+        font-size: 1.75rem;
+        margin-bottom: 1rem;
+    }
+
+    p {
+        color: #ccc;
+        font-size: 1.1rem;
+    }
+
+    a {
+        color: #ffc107;
+    }
+
+        a:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+
+    .text-danger {
+        color: #f88;
+    }
+</style>
+
+<div class="login-container">
+    <h1>Register Confirmation</h1>
+    <StatusMessage Message="@statusMessage" />
+
+    @if (emailConfirmationLink is not null)
+    {
+        <p>
+            This app does not currently have a real email sender configured.<br />
+            <a href="https://aka.ms/aspaccountconf" target="_blank">Click here to learn how to configure one.</a>
+        </p>
+        <p>
+            For testing, you can confirm your account manually:<br />
+            <a href="@emailConfirmationLink">Click here to confirm your account</a>
+        </p>
+    }
+    else
+    {
+        <p>Please check your email inbox to confirm your account.</p>
+    }
+
+    <div class="mt-4">
+        <a href="/Account/Login">Back to Login</a>
+    </div>
+</div>
+
+@code {
+    private string? emailConfirmationLink;
+    private string? statusMessage;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? Email { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Email is null)
+        {
+            RedirectManager.RedirectTo("");
+        }
+
+        var user = await UserManager.FindByEmailAsync(Email);
+        if (user is null)
+        {
+            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+            statusMessage = "Error finding user for the specified email.";
+        }
+        else if (EmailSender is IdentityNoOpEmailSender)
+        {
+            // Dev/testing fallback – generate link manually
+            var userId = await UserManager.GetUserIdAsync(user);
+            var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
+            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+
+            emailConfirmationLink = NavigationManager.GetUriWithQueryParameters(
+                NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
+                new Dictionary<string, object?>
+                    {
+                        ["userId"] = userId,
+                        ["code"] = code,
+                        ["returnUrl"] = ReturnUrl
+                    });
+        }
+    }
+}

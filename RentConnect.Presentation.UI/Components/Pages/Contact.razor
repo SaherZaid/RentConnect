@@ -1,0 +1,453 @@
+﻿@page "/contact"
+@rendermode InteractiveServer
+
+@using System.ComponentModel.DataAnnotations
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<PageTitle>Contact - RentConnect</PageTitle>
+
+<style>
+    .contact-hero {
+        background: radial-gradient(circle at top left, #eff6ff 0, #ffffff 45%, #eef2ff 100%);
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .contact-hero-inner {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 3rem 1.5rem 2.5rem;
+    }
+
+    .contact-kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #6366f1;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+    }
+
+    .contact-title {
+        font-size: clamp(2rem, 3vw, 2.4rem);
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.6rem;
+    }
+
+    .contact-subtitle {
+        max-width: 620px;
+        color: #64748b;
+        font-size: 0.95rem;
+    }
+
+    .contact-meta-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.3rem 0.75rem;
+        border-radius: 999px;
+        background-color: #e0f2fe;
+        color: #0369a1;
+        font-size: 0.78rem;
+        margin-top: 1.2rem;
+    }
+
+        .contact-meta-pill i {
+            font-size: 0.9rem;
+        }
+
+    .contact-wrapper {
+        padding: 2.5rem 1.5rem 3rem;
+        background-color: #f9fafb;
+    }
+
+    .contact-inner {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    .contact-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.7fr) minmax(0, 1.1fr);
+        gap: 1.8rem;
+        align-items: flex-start;
+    }
+
+    .contact-card {
+        background-color: #ffffff;
+        border-radius: 1.1rem;
+        padding: 1.8rem 1.6rem;
+        border: 1px solid rgba(209,213,219,0.9);
+        box-shadow: 0 16px 40px rgba(15,23,42,0.06);
+    }
+
+        .contact-card h2 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 0.4rem;
+        }
+
+    .contact-card-sub {
+        font-size: 0.88rem;
+        color: #6b7280;
+        margin-bottom: 1.2rem;
+    }
+
+    .contact-form-label {
+        font-size: 0.86rem;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.25rem;
+    }
+
+    .contact-form-control,
+    .contact-form-select {
+        font-size: 0.9rem;
+        border-radius: 0.75rem;
+        border-color: #e5e7eb;
+        background-color: #f9fafb;
+    }
+
+        .contact-form-control:focus,
+        .contact-form-select:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 1px rgba(37,99,235,0.25);
+            background-color: #ffffff;
+        }
+
+    .contact-btn-primary {
+        border-radius: 999px;
+        padding: 0.55rem 1.4rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        box-shadow: 0 10px 24px rgba(37,99,235,0.35);
+    }
+
+    .contact-small-hint {
+        font-size: 0.78rem;
+        color: #9ca3af;
+    }
+
+    .validation-message {
+        font-size: 0.8rem;
+        color: #dc2626;
+    }
+
+    .contact-side-card {
+        background-color: #ffffff;
+        border-radius: 1rem;
+        padding: 1.3rem 1.3rem;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 12px 30px rgba(15,23,42,0.04);
+        font-size: 0.88rem;
+        color: #4b5563;
+    }
+
+        .contact-side-card h6 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 0.4rem;
+        }
+
+    .contact-side-row {
+        display: flex;
+        gap: 0.6rem;
+        margin-bottom: 0.6rem;
+        align-items: flex-start;
+    }
+
+        .contact-side-row i {
+            margin-top: 0.1rem;
+            color: #4f46e5;
+        }
+
+    .contact-pill-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        margin-top: 0.4rem;
+    }
+
+    .contact-pill {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 999px;
+        background-color: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    .contact-status {
+        margin-top: 0.8rem;
+        font-size: 0.82rem;
+    }
+
+        .contact-status i {
+            margin-right: 0.25rem;
+        }
+
+    @@media (max-width: 992px) {
+        .contact-hero-inner
+
+    {
+        padding-top: 2.3rem;
+    }
+
+    .contact-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    }
+
+    @@media (max-width: 768px) {
+        .contact-wrapper
+
+    {
+        padding-inline: 1rem;
+    }
+
+    }
+</style>
+
+<div class="contact-hero">
+    <div class="contact-hero-inner">
+        <div class="contact-kicker">CONTACT</div>
+        <h1 class="contact-title">
+            Need help with a booking or listing?
+        </h1>
+        <p class="contact-subtitle">
+            Whether you’re renting something or listing your own items, we’re here to help.
+            Send us a message and we’ll get back to you as soon as we can.
+        </p>
+
+        <span class="contact-meta-pill">
+            <i class="bi bi-chat-dots"></i>
+            Typical reply time: within 24–48 hours
+        </span>
+    </div>
+</div>
+
+<div class="contact-wrapper">
+    <div class="contact-inner">
+        <div class="contact-grid">
+            <!-- LEFT: CONTACT FORM -->
+            <div>
+                <div class="contact-card">
+                    <h2>Send us a message</h2>
+                    <p class="contact-card-sub">
+                        Fill in the form below with as much detail as possible – especially if your question
+                        is about a specific booking or item.
+                    </p>
+
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="alert alert-success py-2 mb-3">
+                            <i class="bi bi-check-circle me-2"></i>@successMessage
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger py-2 mb-3">
+                            <i class="bi bi-exclamation-triangle me-2"></i>@errorMessage
+                        </div>
+                    }
+
+                    <EditForm Model="formModel" OnValidSubmit="HandleSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger mb-2" />
+
+                        <div class="mb-3">
+                            <label class="contact-form-label">Full name</label>
+                            <InputText class="form-control contact-form-control" @bind-Value="formModel.FullName" />
+                            <ValidationMessage For="@(() => formModel.FullName)" class="validation-message" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="contact-form-label">Email address</label>
+                            <InputText class="form-control contact-form-control" @bind-Value="formModel.Email" />
+                            <ValidationMessage For="@(() => formModel.Email)" class="validation-message" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="contact-form-label">Topic</label>
+                            <InputSelect class="form-select contact-form-select" @bind-Value="formModel.Topic">
+                                <option value="general">General question</option>
+                                <option value="booking">Booking issue</option>
+                                <option value="listing">Listing / item issue</option>
+                                <option value="account">Account & profile</option>
+                                <option value="other">Other</option>
+                            </InputSelect>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="contact-form-label">Subject</label>
+                            <InputText class="form-control contact-form-control" @bind-Value="formModel.Subject" />
+                            <ValidationMessage For="@(() => formModel.Subject)" class="validation-message" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="contact-form-label">Message</label>
+                            <InputTextArea class="form-control contact-form-control"
+                                           @bind-Value="formModel.Message"
+                                           rows="4" />
+                            <ValidationMessage For="@(() => formModel.Message)" class="validation-message" />
+                            <div class="contact-small-hint mt-1">
+                                If your question is about a specific item or booking, please mention its title or date.
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary contact-btn-primary" disabled="@isSending">
+                            @if (isSending)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span> Sending...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-send-fill"></i>
+                                <span>Send message</span>
+                            }
+                        </button>
+
+                        <div class="contact-status text-muted mt-2">
+                            <i class="bi bi-shield-check"></i>
+                            Your message is only used to respond to your request.
+                            It won’t be shared for marketing without your consent.
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+
+            <!-- RIGHT: INFO / SHORTCUTS -->
+            <aside>
+                <div class="contact-side-card mb-3">
+                    <h6><i class="bi bi-geo-alt me-1"></i> Quick links</h6>
+                    <div class="contact-side-row">
+                        <i class="bi bi-question-circle"></i>
+                        <div>
+                            Check the <a href="/about">About</a> and <a href="/policy">Policy</a> pages
+                            for common questions about how RentConnect works.
+                        </div>
+                    </div>
+                    <div class="contact-side-row">
+                        <i class="bi bi-calendar-check"></i>
+                        <div>
+                            For booking status, you can also visit
+                            <a href="/bookings">My Bookings</a> or <a href="/my-bookings/owner">Owner Requests</a>.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="contact-side-card mb-3">
+                    <h6><i class="bi bi-envelope-open me-1"></i> Direct contact</h6>
+                    <div class="contact-side-row">
+                        <i class="bi bi-at"></i>
+                        <div>
+                            Email: <strong>RentConnectAB</strong><br />
+                            In production, this maps to your configured support email.
+                        </div>
+                    </div>
+                    <div class="contact-side-row mb-0">
+                        <i class="bi bi-clock-history"></i>
+                        <div>
+                            Support hours: <strong>Monday–Friday</strong>, 9:00 – 18:00 (local time).
+                            Messages sent outside these hours may take a bit longer.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="contact-side-card">
+                    <h6><i class="bi bi-lightbulb me-1"></i> Tips for faster replies</h6>
+                    <p class="mb-2">When you contact us, it helps a lot if you include:</p>
+                    <div class="contact-pill-list">
+                        <span class="contact-pill">Your account email</span>
+                        <span class="contact-pill">Item name</span>
+                        <span class="contact-pill">Booking dates</span>
+                        <span class="contact-pill">Screenshots (if relevant)</span>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+</div>
+
+@code {
+    private ContactFormModel formModel = new();
+    private string? successMessage;
+    private string? errorMessage;
+    private bool isSending = false;
+
+    private async Task HandleSubmit()
+    {
+        successMessage = null;
+        errorMessage = null;
+        isSending = true;
+
+        try
+        {
+            var apiModel = new ContactRequestApiModel
+                {
+                    FullName = formModel.FullName,
+                    Email = formModel.Email,
+                    Topic = formModel.Topic,
+                    Subject = formModel.Subject,
+                    Message = formModel.Message
+                };
+
+            // ✈️ استدعاء الـ API – عدّل الرابط لو الـ API على بورت مختلف
+            var response = await Http.PostAsJsonAsync("https://localhost:7087/api/contact", apiModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                successMessage = "Your message has been sent. We’ll get back to you as soon as possible.";
+                formModel = new ContactFormModel();
+            }
+            else
+            {
+                errorMessage = "Something went wrong while sending your message. Please try again later.";
+            }
+        }
+        catch
+        {
+            errorMessage = "Could not reach the server. Please check your connection and try again.";
+        }
+        finally
+        {
+            isSending = false;
+        }
+    }
+
+    public class ContactFormModel
+    {
+        [Required(ErrorMessage = "Full name is required.")]
+        public string FullName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Email is required.")]
+        [EmailAddress(ErrorMessage = "Please enter a valid email.")]
+        public string Email { get; set; } = string.Empty;
+
+        public string Topic { get; set; } = "general";
+
+        [Required(ErrorMessage = "Subject is required.")]
+        public string Subject { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Message is required.")]
+        [MinLength(10, ErrorMessage = "Please provide at least 10 characters.")]
+        public string Message { get; set; } = string.Empty;
+    }
+
+    // موديل بسيط يرسل للـ API (نفس حق الـ Backend تقريباً)
+    private class ContactRequestApiModel
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Topic { get; set; } = "general";
+        public string Subject { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+    }
+}

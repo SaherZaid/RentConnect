@@ -1,0 +1,413 @@
+﻿@page "/edititem/{ItemId:guid}"
+@rendermode InteractiveServer
+
+@inject IItemService ItemService
+@inject ICategoryService CategoryService
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager NavManager
+@inject IJSRuntime JS
+
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Authorization
+@using global::RentConnect.Presentation.UI.RentConnect.Presentation.DTOs
+@using global::RentConnect.Presentation.UI.IServices
+
+<PageTitle>Edit Item</PageTitle>
+
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 2.5rem auto;
+        background: #fff;
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 18px 35px rgba(15,23,42,0.13);
+    }
+
+    .img-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill,minmax(120px,1fr));
+        gap: .75rem;
+    }
+
+    .img-card {
+        position: relative;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #0f172a;
+    }
+
+        .img-card img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .img-card button {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            border-radius: 999px;
+            padding: .15rem .4rem;
+            font-size: .75rem;
+        }
+
+    .upload-dropzone {
+        border: 1px dashed #cbd5f5;
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+        background: #f9fafb;
+        cursor: pointer;
+        transition: background .15s ease,border-color .15s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .upload-dropzone:hover {
+            background: #eff6ff;
+            border-color: #2563eb;
+        }
+</style>
+
+<div class="form-container">
+    <h3 class="fw-bold mb-3">Edit Item</h3>
+
+    @if (loading)
+    {
+        <div class="text-center p-4">
+            <div class="spinner-border text-primary"></div>
+        </div>
+    }
+    else if (item == null)
+    {
+        <div class="alert alert-danger">Item not found.</div>
+    }
+    else if (!isOwner)
+    {
+        <div class="alert alert-danger">
+            You cannot edit this item.
+        </div>
+    }
+    else
+    {
+        <EditForm Model="edit" OnValidSubmit="SubmitUpdate">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Name</label>
+                    <InputText class="form-control" @bind-Value="edit.Name" />
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Description</label>
+                    <InputTextArea class="form-control" rows="4" @bind-Value="edit.Description" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Price / day</label>
+                    <InputNumber class="form-control" @bind-Value="edit.PricePerDay" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" @bind="edit.CategoryId">
+                        <option value="@Guid.Empty">-- Select category --</option>
+                        @foreach (var c in categories)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">City</label>
+                    <select class="form-select" @bind="edit.City" required>
+                        <option value="">-- Select city --</option>
+                        @foreach (var city in allCities)
+                        {
+                            <option value="@city">@city</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <div class="form-check mt-2">
+                        <InputCheckbox class="form-check-input" @bind-Value="edit.IsShippable" />
+                        <label class="form-check-label">Shippable?</label>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Notes (optional)</label>
+                    <InputTextArea class="form-control" rows="2" @bind-Value="edit.Notes" />
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <!-- Existing images -->
+            <h5 class="fw-bold mb-2">Current Images</h5>
+
+            @if (existingImages.Count == 0)
+            {
+                <div class="text-muted">No images.</div>
+            }
+            else
+            {
+                <div class="img-grid mb-3">
+                    @foreach (var img in existingImages)
+                    {
+                        <div class="img-card" style="opacity:@(img.MarkedForDelete ? "0.45" : "1")">
+                            <img src="@img.ImageUrl" />
+                            <button type="button"
+                                    class="btn btn-sm @(img.MarkedForDelete ? "btn-warning" : "btn-light")"
+                                    title="Toggle delete"
+                                    @onclick="() => ToggleDeleteExisting(img.Id)">
+                                <i class="bi @(img.MarkedForDelete ? "bi-arrow-counterclockwise" : "bi-trash")"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+
+                
+            }
+
+            <hr class="my-4" />
+
+            <!-- New images -->
+            <h5 class="fw-bold mb-2">Add New Images</h5>
+
+            @if (newFiles.Any())
+            {
+                <div class="img-grid mb-3">
+                    @foreach (var file in newFiles.Select((f, i) => new { f, i }))
+                    {
+                        <div class="img-card">
+                            <img src="@($"data:{file.f.ContentType};base64,{Convert.ToBase64String(file.f.Content)}")" />
+                            <button type="button"
+                                    class="btn btn-sm btn-light"
+                                    title="Remove"
+                                    @onclick="() => RemoveNewImage(file.i)">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+
+            <label class="upload-dropzone mb-3">
+                <i class="bi bi-cloud-arrow-up-fill"></i>
+                <div>Add images (up to 20)</div>
+                <InputFile OnChange="HandleFilesUpload"
+                           multiple
+                           accept="image/*"
+                           style="opacity:0; position:absolute; inset:0; cursor:pointer;" />
+            </label>
+
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-primary" type="submit" disabled="@saving">
+                    @(saving ? "Saving..." : "Save changes")
+                </button>
+
+                <button type="button" class="btn btn-secondary"
+                        @onclick='() => NavManager.NavigateTo("/profile")'>
+                    Cancel
+                </button>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(errorMsg))
+            {
+                <div class="alert alert-danger mt-3">@errorMsg</div>
+            }
+        </EditForm>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid ItemId { get; set; }
+
+    bool loading = true;
+    bool saving = false;
+    string? errorMsg;
+
+    ItemDto? item;
+    ItemDto edit = new();
+
+    List<CategoryDto> categories = new();
+    List<string> allCities = new();
+
+    string? currentUserId;
+    bool isOwner = false;
+
+    // existing images with toggle delete
+    class ExistingImageVm
+    {
+        public Guid Id { get; set; }
+        public string ImageUrl { get; set; } = "";
+        public bool MarkedForDelete { get; set; }
+    }
+    List<ExistingImageVm> existingImages = new();
+
+    // new images preview memory
+    List<(string FileName, string ContentType, byte[] Content)> newFiles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    async Task LoadAsync()
+    {
+        loading = true;
+        errorMsg = null;
+
+        // user
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        currentUserId = user.FindFirst(c => c.Type == "sub")?.Value
+                     ?? user.FindFirst(c => c.Type.Contains("nameidentifier"))?.Value;
+
+        // dropdowns
+        categories = (await CategoryService.GetAllCategoriesAsync()).ToList();
+
+        var items = await ItemService.GetAllAsync();
+        allCities = items
+            .Where(i => !string.IsNullOrWhiteSpace(i.City))
+            .Select(i => i.City!)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToList();
+
+        // item
+        item = await ItemService.GetByIdAsync(ItemId);
+        if (item != null)
+        {
+            isOwner = !string.IsNullOrWhiteSpace(currentUserId) && item.OwnerId == currentUserId;
+
+            edit = new ItemDto
+                {
+                    Id = item.Id,
+                    Name = item.Name,
+                    Description = item.Description,
+                    PricePerDay = item.PricePerDay,
+                    CategoryId = item.CategoryId,
+                    City = item.City,
+                    IsShippable = item.IsShippable,
+                    Notes = item.Notes,
+                    OwnerId = item.OwnerId
+                };
+
+            // ✅ لازم يكون عندك item.Images (اللي سويناها في الـ API)
+            existingImages = (item.Images ?? new())
+                .Select(x => new ExistingImageVm { Id = x.Id, ImageUrl = x.ImageUrl, MarkedForDelete = false })
+                .ToList();
+        }
+
+        newFiles.Clear();
+        loading = false;
+    }
+
+    void ToggleDeleteExisting(Guid imageId)
+    {
+        var img = existingImages.FirstOrDefault(x => x.Id == imageId);
+        if (img != null) img.MarkedForDelete = !img.MarkedForDelete;
+    }
+
+    async Task HandleFilesUpload(InputFileChangeEventArgs e)
+    {
+        const long maxFileSize = 10 * 1024 * 1024;
+        const int maxFiles = 20;
+
+        var selected = e.GetMultipleFiles(maxFiles);
+
+        foreach (var file in selected)
+        {
+            try
+            {
+                using var ms = new MemoryStream();
+                await file.OpenReadStream(maxAllowedSize: maxFileSize).CopyToAsync(ms);
+                newFiles.Add((file.Name, file.ContentType, ms.ToArray()));
+            }
+            catch
+            {
+                errorMsg = $"Could not load '{file.Name}' (maybe too large).";
+            }
+        }
+    }
+
+    void RemoveNewImage(int index)
+    {
+        if (index >= 0 && index < newFiles.Count)
+            newFiles.RemoveAt(index);
+    }
+
+    async Task SubmitUpdate()
+    {
+        if (item == null) return;
+
+        errorMsg = null;
+        saving = true;
+
+        // validations بسيطة
+        if (string.IsNullOrWhiteSpace(edit.Name) ||
+            string.IsNullOrWhiteSpace(edit.Description) ||
+            string.IsNullOrWhiteSpace(edit.City) ||
+            edit.CategoryId == Guid.Empty)
+        {
+            errorMsg = "Please fill all required fields.";
+            saving = false;
+            return;
+        }
+
+        // build multipart like additems
+        var formData = new MultipartFormDataContent();
+
+        formData.Add(new StringContent(edit.Id.ToString()), "Id");
+        formData.Add(new StringContent(edit.Name), "Name");
+        formData.Add(new StringContent(edit.Description), "Description");
+        formData.Add(new StringContent(edit.PricePerDay.ToString()), "PricePerDay");
+        formData.Add(new StringContent(edit.CategoryId.ToString()), "CategoryId");
+        formData.Add(new StringContent(edit.City), "City");
+        formData.Add(new StringContent(edit.IsShippable.ToString()), "IsShippable");
+
+        if (!string.IsNullOrWhiteSpace(edit.Notes))
+            formData.Add(new StringContent(edit.Notes), "Notes");
+
+        // deleted existing images
+        var deleted = existingImages.Where(x => x.MarkedForDelete).Select(x => x.Id).ToList();
+        foreach (var imgId in deleted)
+        {
+            // لازم نفس اسم الـ List في DTO: DeletedImageIds
+            formData.Add(new StringContent(imgId.ToString()), "DeletedImageIds");
+        }
+
+        // new images
+        foreach (var f in newFiles)
+        {
+            var content = new ByteArrayContent(f.Content);
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+                string.IsNullOrWhiteSpace(f.ContentType) ? "application/octet-stream" : f.ContentType);
+
+            // لازم نفس اسم الـ List في DTO: NewImages
+            formData.Add(content, "NewImages", f.FileName);
+        }
+
+        var resp = await ItemService.UpdateItemWithImagesAsync(edit.Id, formData);
+
+        if (resp.IsSuccessStatusCode)
+        {
+            NavManager.NavigateTo("/profile");
+        }
+        else
+        {
+            var err = await resp.Content.ReadAsStringAsync();
+            errorMsg = $"Update failed: {err}";
+        }
+
+        saving = false;
+    }
+}

@@ -1,0 +1,234 @@
+﻿@page "/manage-roles"
+
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using global::RentConnect.API.RentConnect.Domain.Models
+
+@rendermode InteractiveServer
+
+@inject UserManager<ApplicationUser> _userManager
+@inject RoleManager<IdentityRole> _roleManager
+@inject NavigationManager NavigationManager
+
+<h3><i class="bi bi-person-gear me-2"></i>Manage Users & Roles</h3>
+
+<!-- Filter by Role -->
+<div class="d-flex flex-wrap align-items-center mt-3 gap-2">
+    <label class="fw-bold me-2">Filter by Role:</label>
+    <select class="form-select w-auto" @bind="selectedRoleFilter" @bind:after="StateHasChanged">
+        <option value="All">All Users</option>
+        <option value="Admin">Admins Only</option>
+        <option value="SuperAdmin">SuperAdmins Only</option>
+        <option value="NoRole">Users Without Roles</option>
+    </select>
+</div>
+
+<!-- Search -->
+<div class="input-group search-box mt-3">
+    <span class="input-group-text"><i class="bi bi-search"></i></span>
+    <input class="form-control" type="text" placeholder="Search users..."
+           @bind="searchTerm" @bind:event="oninput" />
+    @if (!string.IsNullOrWhiteSpace(searchTerm))
+    {
+        <button class="clear-btn px-3" @onclick="ClearSearch" title="Clear">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    }
+</div>
+
+@if (FilteredUsers == null || !FilteredUsers.Any())
+{
+    <div class="alert alert-warning mt-4">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>No users found.
+    </div>
+}
+else
+{
+    <div class="table-responsive mt-4">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>User</th>
+                    <th>Current Roles</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in FilteredUsers)
+                {
+                    <tr>
+                        <td>
+                            <strong>@user.UserName</strong><br />
+                            <small class="text-muted">@user.Email</small>
+                        </td>
+                        <td>
+                            @if (UserRoles.ContainsKey(user.Id) && UserRoles[user.Id].Any())
+                            {
+                                @foreach (var role in UserRoles[user.Id])
+                                {
+                                    <span class="badge bg-primary">@role</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted">No roles</span>
+                            }
+                        </td>
+                        <td>
+                            @foreach (var role in Roles)
+                            {
+                                if (UserRoles.ContainsKey(user.Id) && UserRoles[user.Id].Contains(role))
+                                {
+                                    <button class="btn btn-sm btn-outline-danger btn-role"
+                                            @onclick="() => RemoveRoleAsync(user.Id, role)">
+                                        <i class="bi bi-x-circle"></i> Remove @role
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-outline-success btn-role"
+                                            @onclick="() => AddRoleAsync(user.Id, role)">
+                                        <i class="bi bi-plus-circle"></i> Add @role
+                                    </button>
+                                }
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    public Task<AuthenticationState> AuthenticationState { get; set; }
+
+    private IList<ApplicationUser> Users { get; set; } = new List<ApplicationUser>();
+    private IList<string> Roles { get; set; } = new List<string>();
+    private Dictionary<string, List<string>> UserRoles { get; set; } = new();
+    private string searchTerm = string.Empty;
+    private string selectedRoleFilter = "All";
+
+    private IEnumerable<ApplicationUser> FilteredUsers =>
+        Users
+            .Where(u =>
+                string.IsNullOrWhiteSpace(searchTerm) ||
+                (!string.IsNullOrEmpty(u.UserName) && u.UserName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(u.Email) && u.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)))
+            .Where(u =>
+            {
+                if (selectedRoleFilter == "All") return true;
+                if (selectedRoleFilter == "NoRole")
+                    return !UserRoles.ContainsKey(u.Id) || !UserRoles[u.Id].Any();
+                return UserRoles.ContainsKey(u.Id) && UserRoles[u.Id].Contains(selectedRoleFilter);
+            });
+
+    private void ClearSearch()
+    {
+        searchTerm = string.Empty;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthenticationState).User;
+        if (!user.IsInRole("SuperAdmin"))
+        {
+            NavigationManager.NavigateTo("/access-denied");
+            return;
+        }
+
+        Users = await _userManager.Users.ToListAsync();
+
+        Roles = await _roleManager.Roles
+            .Where(r => r.Name == "SuperAdmin" || r.Name == "Admin")
+            .Select(r => r.Name)
+            .ToListAsync();
+
+        foreach (var userItem in Users)
+        {
+            var roles = await _userManager.GetRolesAsync(userItem);
+            UserRoles[userItem.Id] = roles.ToList();
+        }
+    }
+
+    private async Task AddRoleAsync(string userId, string role)
+    {
+        if (role != "SuperAdmin" && role != "Admin")
+            return;
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user != null && await _roleManager.RoleExistsAsync(role))
+        {
+            await _userManager.AddToRoleAsync(user, role);
+
+            if (!UserRoles.ContainsKey(userId))
+                UserRoles[userId] = new List<string>();
+
+            if (!UserRoles[userId].Contains(role))
+                UserRoles[userId].Add(role);
+
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemoveRoleAsync(string userId, string role)
+    {
+        if (role != "SuperAdmin" && role != "Admin")
+            return;
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user != null && await _roleManager.RoleExistsAsync(role))
+        {
+            await _userManager.RemoveFromRoleAsync(user, role);
+
+            if (UserRoles.ContainsKey(userId) && UserRoles[userId].Contains(role))
+            {
+                UserRoles[userId].Remove(role);
+            }
+
+            StateHasChanged();
+        }
+    }
+}
+
+<style>
+    h3 {
+        margin-top: 20px;
+        font-weight: bold;
+        color: #0d6efd;
+    }
+
+    .badge {
+        font-size: 0.85rem;
+        margin-right: 4px;
+    }
+
+    .btn-role {
+        margin-right: 6px;
+        margin-top: 4px;
+    }
+
+    .table thead th {
+        background-color: #f1f1f1;
+    }
+
+    .search-box {
+        max-width: 400px;
+    }
+
+    .clear-btn {
+        border: none;
+        background: transparent;
+        font-size: 1.2rem;
+        color: #aaa;
+        cursor: pointer;
+    }
+
+        .clear-btn:hover {
+            color: #000;
+
+        }
+</style>

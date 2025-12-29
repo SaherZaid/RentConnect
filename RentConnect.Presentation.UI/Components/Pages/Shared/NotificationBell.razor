@@ -1,0 +1,450 @@
+﻿@rendermode InteractiveServer
+
+@using global::RentConnect.API.RentConnect.Presentation.DTOs
+@using Microsoft.AspNetCore.SignalR.Client
+@using System.Net.Http.Json
+
+@inject NavigationManager NavManager
+@inject HttpClient Http
+
+<style>
+    /* ===== NOTIFICATION BELL ===== */
+    .rc-notify-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .rc-bell-btn {
+        border: none;
+        background: transparent;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        position: relative;
+    }
+
+        .rc-bell-btn i {
+            font-size: 1.4rem;
+            color: #4b5563;
+        }
+
+        .rc-bell-btn:hover i {
+            color: #111827;
+        }
+
+    .rc-bell-dot {
+        position: absolute;
+        top: -4px;
+        right: -6px;
+        min-width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        background-color: #ef4444;
+        color: #fff;
+        font-size: .7rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        padding: 0 4px;
+        box-shadow: 0 0 0 2px #fff;
+    }
+
+    .rc-notify-panel {
+        position: absolute;
+        top: 130%;
+        right: 0;
+        width: 340px;
+        max-height: 420px;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 20px 40px rgba(0,0,0,.15);
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+        z-index: 3000;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .rc-notify-header {
+        padding: .6rem .9rem;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 800;
+    }
+
+        .rc-notify-header .actions {
+            display: flex;
+            align-items: center;
+            gap: .35rem;
+        }
+
+        .rc-notify-header button {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: #6b7280;
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+
+            .rc-notify-header button:hover {
+                color: #111827;
+            }
+
+    .rc-notify-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        overflow-y: auto;
+        max-height: 360px;
+    }
+
+    .rc-notify-item {
+        width: 100%;
+        display: flex;
+        gap: .6rem;
+        padding: .6rem .9rem;
+        text-decoration: none;
+        color: inherit;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        text-align: left;
+    }
+
+        .rc-notify-item:hover {
+            background: #f9fafb;
+        }
+
+        .rc-notify-item.unread {
+            background: #eff6ff;
+        }
+
+    .rc-notify-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        background: #eff6ff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #2563eb;
+        flex-shrink: 0;
+    }
+
+    .rc-notify-title {
+        font-size: .85rem;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .5rem;
+    }
+
+    .rc-notify-text {
+        font-size: .8rem;
+        color: #4b5563;
+        margin-top: 1px;
+        white-space: normal;
+    }
+
+    .rc-notify-time {
+        font-size: .7rem;
+        color: #9ca3af;
+        margin-top: 2px;
+    }
+
+    .rc-notify-empty {
+        padding: .9rem;
+        text-align: center;
+        color: #6b7280;
+        font-size: .85rem;
+    }
+
+    .rc-notify-footer {
+        border-top: 1px solid #e5e7eb;
+        padding: .55rem .9rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: .5rem;
+    }
+
+    .rc-notify-muted {
+        font-size: .75rem;
+        color: #6b7280;
+    }
+
+    .rc-notify-refresh {
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        border-radius: 999px;
+        font-size: .8rem;
+        padding: .25rem .6rem;
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        cursor: pointer;
+    }
+
+        .rc-notify-refresh:hover {
+            background: #f3f4f6;
+        }
+</style>
+
+<div class="rc-notify-wrapper">
+    <button class="rc-bell-btn" @onclick="ToggleAsync" aria-label="Notifications">
+        <i class="bi bi-bell-fill"></i>
+
+        @if (UnreadCount > 0)
+        {
+            <span class="rc-bell-dot">
+                @(UnreadCount > 9 ? "9+" : UnreadCount.ToString())
+            </span>
+        }
+    </button>
+
+    @if (isOpen)
+    {
+        <div class="rc-notify-panel">
+            <div class="rc-notify-header">
+                <span>Notifications</span>
+
+                <span class="actions">
+                    <button title="Refresh" @onclick="RefreshAsync" type="button">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+
+                    <button title="Close" @onclick="Close" type="button">
+                        &times;
+                    </button>
+                </span>
+            </div>
+
+            @if (isLoading)
+            {
+                <div class="rc-notify-empty">Loading...</div>
+            }
+            else if (!notifications.Any())
+            {
+                <div class="rc-notify-empty">No notifications yet</div>
+            }
+            else
+            {
+                <ul class="rc-notify-list">
+                    @foreach (var n in notifications.OrderByDescending(x => x.CreatedAt))
+                    {
+                        <li>
+                            <button type="button"
+                                    class="rc-notify-item @(n.IsRead ? "" : "unread")"
+                                    @onclick="() => OpenAsync(n)">
+                                <div class="rc-notify-icon">
+                                    @switch (GetType(n))
+                                    {
+                                        case "messages":
+                                            <i class="bi bi-chat-dots"></i>
+                                            break;
+                                        case "booking":
+                                            <i class="bi bi-calendar-check"></i>
+                                            break;
+                                        case "review":
+                                            <i class="bi bi-star-fill"></i>
+                                            break;
+                                        default:
+                                            <i class="bi bi-bell"></i>
+                                            break;
+                                    }
+                                </div>
+
+                                <div style="min-width:0; flex:1;">
+                                    <div class="rc-notify-title">
+                                        <span>@n.Title</span>
+                                        @if (!n.IsRead)
+                                        {
+                                            <span class="badge rounded-pill bg-primary" style="font-size:.65rem;">New</span>
+                                        }
+                                    </div>
+                                    <div class="rc-notify-text">@n.Message</div>
+                                    <div class="rc-notify-time">@n.CreatedAt.ToLocalTime().ToString("dd MMM · HH:mm")</div>
+                                </div>
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+
+            <div class="rc-notify-footer">
+                <span class="rc-notify-muted">Unread: @UnreadCount</span>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? UserId { get; set; }
+
+    // ✅ عدّل هذا إذا API عندك بعنوان مختلف (مثلاً https://localhost:7087)
+    private const string ApiBase = "https://localhost:7087";
+
+    private bool isOpen;
+    private bool isLoading;
+
+    private int UnreadCount;
+    private List<NotificationDto> notifications = new();
+
+    private HubConnection? hub;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(UserId))
+            return;
+
+        // أول مرة: هات العدد وشغّل الريل تايم
+        await LoadUnreadCountAsync();
+        await EnsureHubAsync();
+    }
+
+    private async Task ToggleAsync()
+    {
+        isOpen = !isOpen;
+
+        if (isOpen)
+            await RefreshAsync();
+    }
+
+    private void Close() => isOpen = false;
+
+    private async Task RefreshAsync()
+    {
+        if (string.IsNullOrWhiteSpace(UserId))
+            return;
+
+        isLoading = true;
+        StateHasChanged();
+
+        await LoadNotificationsAsync();
+        await LoadUnreadCountAsync();
+
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task LoadNotificationsAsync()
+    {
+        try
+        {
+            var url = $"{ApiBase}/api/Notification?userId={Uri.EscapeDataString(UserId!)}";
+            var data = await Http.GetFromJsonAsync<List<NotificationDto>>(url);
+            notifications = data ?? new();
+        }
+        catch
+        {
+            notifications = new();
+        }
+    }
+
+    private async Task LoadUnreadCountAsync()
+    {
+        try
+        {
+            var url = $"{ApiBase}/api/Notification/unread-count?userId={Uri.EscapeDataString(UserId!)}";
+            UnreadCount = await Http.GetFromJsonAsync<int>(url);
+        }
+        catch
+        {
+            UnreadCount = 0;
+        }
+    }
+
+    private async Task OpenAsync(NotificationDto n)
+    {
+        if (string.IsNullOrWhiteSpace(UserId))
+            return;
+
+        // 1) Mark as read
+        if (!n.IsRead)
+        {
+            try
+            {
+                var url = $"{ApiBase}/api/Notification/{n.Id}/read?userId={Uri.EscapeDataString(UserId!)}";
+                var resp = await Http.PatchAsync(url, null);
+                if (resp.IsSuccessStatusCode)
+                {
+                    n.IsRead = true;
+                    if (UnreadCount > 0) UnreadCount--;
+                }
+            }
+            catch { }
+        }
+
+        // 2) close + navigate
+        isOpen = false;
+        StateHasChanged();
+
+        if (!string.IsNullOrWhiteSpace(n.Link))
+            NavManager.NavigateTo(n.Link);
+    }
+
+    private string GetType(NotificationDto n)
+    {
+        var link = (n.Link ?? "").ToLowerInvariant();
+        var title = (n.Title ?? "").ToLowerInvariant();
+
+        if (link.Contains("messages") || title.Contains("message") || title.Contains("chat"))
+            return "messages";
+
+        if (link.Contains("bookings") || title.Contains("booking") || title.Contains("request"))
+            return "booking";
+
+        if (title.Contains("review") || title.Contains("rating") || link.Contains("review"))
+            return "review";
+
+        return "default";
+    }
+
+    private async Task EnsureHubAsync()
+    {
+        if (hub != null || string.IsNullOrWhiteSpace(UserId))
+            return;
+
+        hub = new HubConnectionBuilder()
+            .WithUrl($"{ApiBase}/notificationhub")
+            .WithAutomaticReconnect()
+            .Build();
+
+        hub.On<NotificationDto>("ReceiveNotification", async (dto) =>
+        {
+            // يدخل فوراً في القائمة + يزيد العداد
+            notifications.Insert(0, dto);
+            UnreadCount++;
+
+            await InvokeAsync(StateHasChanged);
+        });
+
+        try
+        {
+            await hub.StartAsync();
+            await hub.InvokeAsync("JoinUserGroup", UserId);
+        }
+        catch
+        {
+            // لو فشل الاتصال، عادي—لسه الـ Refresh اليدوي شغال
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (hub != null)
+                await hub.DisposeAsync();
+        }
+        catch { }
+    }
+}

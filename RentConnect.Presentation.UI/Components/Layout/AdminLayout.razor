@@ -1,0 +1,202 @@
+﻿@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using global::RentConnect.API.RentConnect.Domain.Models
+@using global::RentConnect.Presentation.UI.RentConnect.Presentation.DTOs
+@using global::RentConnect.Presentation.UI.IServices
+@using global::RentConnect.Presentation.UI.Components.Layout
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+
+@inherits LayoutComponentBase
+@attribute [Authorize(Roles = "Admin")]
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthProvider
+@inject UserManager<ApplicationUser> UserManager
+@inject IReportAdminService ReportAdminService
+
+
+
+
+
+@code {
+
+
+
+    private string? currentUrl;
+
+    private string? fullName;
+
+    private int pendingReportsCount = 0;
+
+    private async Task LoadPendingReportsCountAsync()
+    {
+        try
+        {
+            pendingReportsCount = await ReportAdminService.GetPendingCountAsync();
+        }
+        catch
+        {
+            pendingReportsCount = 0;
+        }
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var appUser = await UserManager.GetUserAsync(user);
+            fullName = appUser?.FullName;
+        }
+        await LoadPendingReportsCountAsync();
+
+    }
+
+    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        await LoadPendingReportsCountAsync();
+        StateHasChanged();
+    }
+
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+
+}
+
+<style>
+    .custom-nav-gap {
+        gap: 0.6rem !important;
+    }
+
+        .custom-nav-gap .nav-link {
+            padding: 0.3rem 0.8rem;
+            font-size: 0.9rem;
+            border-radius: 4px;
+        }
+
+    .nav-link {
+        transition: all 0.2s ease-in-out;
+        position: relative;
+    }
+
+        .nav-link:hover {
+            color: #0d6efd !important;
+            text-decoration: none;
+        }
+
+        .nav-link::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 0%;
+            height: 2px;
+            background-color: #0d6efd;
+            transition: width 0.3s ease;
+        }
+
+        .nav-link:hover::after,
+        .nav-link.active::after {
+            width: 100%;
+        }
+
+        .nav-link.active {
+            color: #0d6efd !important;
+            font-weight: 600;
+        }
+
+        .nav-link[type="submit"],
+        .nav-link.bg-transparent {
+            padding: 0.3rem 0.8rem;
+            font-size: 0.9rem;
+            display: inline-block;
+            border-radius: 4px;
+            transition: all 0.2s ease-in-out;
+        }
+
+            .nav-link[type="submit"]:hover {
+                color: #0d6efd !important;
+                text-decoration: none;
+            }
+</style>
+
+<header class="shadow-sm border-bottom bg-white sticky-top">
+    <div class="container-fluid py-2 d-flex align-items-center justify-content-between flex-nowrap">
+        <a class="navbar-brand fw-bold text-primary fs-5" href="/Admin/Users">
+            <i class="bi bi-box-seam-fill me-2"></i>RentConnect Admin
+        </a>
+
+        <div class="d-flex justify-content-between align-items-center flex-grow-1">
+            <div class="d-flex align-items-center custom-nav-gap">
+                <nav class="d-flex flex-row align-items-center flex-wrap custom-nav-gap">
+                    <NavLink class="nav-link text-dark" href="/" Match="NavLinkMatch.All">
+                        <i class="bi bi-house-door-fill me-1"></i> Home
+                    </NavLink>
+                    <NavLink class="nav-link text-dark" href="/Admin/Users">
+                        <i class="bi bi-people me-1"></i> Users
+                    </NavLink>
+                    <NavLink class="nav-link text-dark" href="/Admin/Categories">
+                        <i class="bi bi-tags me-1"></i> Categories
+                    </NavLink>
+                    <NavLink class="nav-link text-dark" href="/Admin/Reviews">
+                        <i class="bi bi-chat-left-text me-1"></i> Reviews
+                    </NavLink>
+                    <NavLink class="nav-link text-dark" href="/Admin/Reports">
+                        <i class="bi bi-flag me-1"></i> Reports
+                        @if (pendingReportsCount > 0)
+                        {
+                            <span class="badge bg-danger ms-2" style="font-size:.75rem; vertical-align: middle;">
+                                @pendingReportsCount
+                            </span>
+                        }
+                    </NavLink>
+
+
+                    <AuthorizeView>
+                        <Authorized Context="auth">
+                            @if (auth.User.IsInRole("SuperAdmin"))
+                            {
+                                <NavLink class="nav-link text-dark" href="/manage-roles">
+                                    <i class="bi bi-person-gear me-1"></i> Manage Roles
+                                </NavLink>
+                            }
+                        </Authorized>
+                    </AuthorizeView>
+                </nav>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 flex-nowrap ms-auto">
+                <AuthorizeView>
+                    <Authorized>
+                        <span class="text-dark fw-semibold d-none d-md-inline small me-2" style="white-space: nowrap;">
+                            <i class="bi bi-person-circle me-1"></i> @fullName
+                        </span>
+                        <form action="/Account/Logout" method="post" class="d-inline">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                            <button type="submit" class="nav-link text-dark border-0 bg-transparent p-0 small">
+                                <i class="bi bi-box-arrow-right me-1"></i> Logout
+                            </button>
+                        </form>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="flex-grow-1 p-4 bg-light">
+    @Body
+</main>
+
+<Footer />
+

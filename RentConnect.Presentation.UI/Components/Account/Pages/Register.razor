@@ -1,0 +1,236 @@
+﻿@page "/Account/Register"
+
+@using System.ComponentModel.DataAnnotations
+@using System.Text
+@using System.Text.Encodings.Web
+@using global::RentConnect.API.RentConnect.Domain.Models
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+
+@inject UserManager<ApplicationUser> UserManager
+@inject IUserStore<ApplicationUser> UserStore
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IEmailSender<ApplicationUser> EmailSender
+@inject ILogger<Register> Logger
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Register</PageTitle>
+
+<style>
+    body {
+        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+        color: white;
+    }
+
+    .login-container {
+        max-width: 420px;
+        margin: 5rem auto;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 1rem;
+        box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        backdrop-filter: blur(8px);
+    }
+
+        .login-container h2 {
+            text-align: center;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+
+    .form-control, .form-check-input {
+        background-color: rgba(255,255,255,0.1);
+        color: white;
+        border: 1px solid #aaa;
+    }
+
+        .form-control::placeholder {
+            color: #ccc;
+        }
+
+    .form-label {
+        color: #ddd;
+    }
+
+    a {
+        color: #ffc107;
+    }
+
+        a:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+
+    .btn-primary {
+        background-color: #0d6efd;
+        border: none;
+    }
+
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+        }
+
+    .text-danger {
+        color: #f88 !important;
+    }
+</style>
+
+<div class="login-container">
+    <h2 class="fw-bold text-center mb-4">Create Your Account</h2>
+    <StatusMessage Message="@Message" />
+
+    <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger mb-3" role="alert" />
+
+        <div class="form-floating mb-3">
+            <InputText @bind-Value="Input.FullName" class="form-control" placeholder="Full Name" />
+            <label>Full Name</label>
+            <ValidationMessage For="() => Input.FullName" class="text-danger" />
+        </div>
+
+        <div class="form-floating mb-3">
+            <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" placeholder="Email" />
+            <label>Email</label>
+            <ValidationMessage For="() => Input.Email" class="text-danger" />
+        </div>
+
+        <div class="form-floating mb-3">
+            <InputText @bind-Value="Input.PhoneNumber" class="form-control" placeholder="Phone Number" />
+            <label>Phone Number</label>
+            <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
+        </div>
+
+        <div class="form-floating mb-3">
+            <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="new-password" placeholder="Password" />
+            <label>Password</label>
+            <ValidationMessage For="() => Input.Password" class="text-danger" />
+        </div>
+
+        <div class="form-floating mb-3">
+            <InputText type="password" @bind-Value="Input.ConfirmPassword" class="form-control" autocomplete="new-password" placeholder="Confirm Password" />
+            <label>Confirm Password</label>
+            <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 mb-3">Register</button>
+
+        <div class="text-center">
+            <p><a href="/Account/Login">Already have an account? Login</a></p>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private IEnumerable<IdentityError>? identityErrors;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(error => error.Description))}";
+
+    public async Task RegisterUser(EditContext editContext)
+    {
+        var user = CreateUser();
+        user.FullName = Input.FullName;
+        user.PhoneNumber = Input.PhoneNumber;
+
+        await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
+        var emailStore = GetEmailStore();
+        await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+        var result = await UserManager.CreateAsync(user, Input.Password);
+
+        if (result.Succeeded)
+        {
+            Logger.LogInformation("User created a new account with password.");
+
+            var userId = await UserManager.GetUserIdAsync(user);
+            var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
+            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+
+            var callbackUrl = NavigationManager.GetUriWithQueryParameters(
+                NavigationManager.BaseUri + "Account/ConfirmEmail",
+                new Dictionary<string, object?>
+                    {
+                        ["userId"] = userId,
+                        ["code"] = code,
+                        ["returnUrl"] = ReturnUrl
+                    });
+
+            await EmailSender.SendConfirmationLinkAsync(
+                user,
+                Input.Email,
+                HtmlEncoder.Default.Encode(callbackUrl));
+
+            if (UserManager.Options.SignIn.RequireConfirmedAccount)
+            {
+                RedirectManager.RedirectTo("Account/RegisterConfirmation", new()
+                    {
+                        ["email"] = Input.Email,
+                        ["returnUrl"] = ReturnUrl
+                    });
+                return;
+            }
+
+            await SignInManager.SignInAsync(user, isPersistent: false);
+            RedirectManager.RedirectTo(ReturnUrl);
+        }
+        else
+        {
+            identityErrors = result.Errors;
+        }
+    }
+
+    private ApplicationUser CreateUser()
+    {
+        try
+        {
+            return Activator.CreateInstance<ApplicationUser>();
+        }
+        catch
+        {
+            throw new InvalidOperationException($"Can't create an instance of '{nameof(ApplicationUser)}'. Make sure it's not abstract and has a parameterless constructor.");
+        }
+    }
+
+    private IUserEmailStore<ApplicationUser> GetEmailStore()
+    {
+        if (!UserManager.SupportsUserEmail)
+        {
+            throw new NotSupportedException("This app requires a user store with email support.");
+        }
+        return (IUserEmailStore<ApplicationUser>)UserStore;
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        [Display(Name = "Full Name")]
+        public string FullName { get; set; } = "";
+
+        [Required]
+        [EmailAddress]
+        [Display(Name = "Email")]
+        public string Email { get; set; } = "";
+
+        [Required]
+        [Phone]
+        [Display(Name = "Phone Number")]
+        public string PhoneNumber { get; set; } = "";
+
+        [Required]
+        [StringLength(100, ErrorMessage = "The {0} must be at least {2} characters long.", MinimumLength = 6)]
+        [DataType(DataType.Password)]
+        [Display(Name = "Password")]
+        public string Password { get; set; } = "";
+
+        [DataType(DataType.Password)]
+        [Display(Name = "Confirm password")]
+        [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
+        public string ConfirmPassword { get; set; } = "";
+    }
+}

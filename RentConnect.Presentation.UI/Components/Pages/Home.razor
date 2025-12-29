@@ -1,0 +1,618 @@
+﻿@page "/"
+@using global::RentConnect.Presentation.UI.RentConnect.Presentation.DTOs
+@using global::RentConnect.Presentation.UI.IServices
+@inject NavigationManager NavManager
+@inject ICategoryService CategoryService
+@inject IItemService ItemService
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Components.Web
+
+<style>
+    body {
+        background-color: #f3f4f6;
+    }
+
+    /* 🌆 Hero section ملصوقة في الـ navbar */
+    .hero-section {
+        width: 98.58vw;
+        margin-left: calc(-50vw + 50% + 10px);
+        background: linear-gradient(rgba(15, 23, 42, 0.55), rgba(15, 23, 42, 0.75)), url('/images/rentconnectHome.jpg') center/cover no-repeat;
+        height: 500px;
+        display: flex;
+        align-items: center;
+        color: white;
+        position: relative;
+        overflow-x: hidden;
+        margin-top: -24px; /* عدّلها لو عندك مسافة غريبة فوق */
+    }
+
+    .hero-content {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 0 1rem;
+    }
+
+    .hero-title {
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-shadow: 0 8px 25px rgba(0, 0, 0, 0.45);
+    }
+
+    .hero-subtitle {
+        text-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    /* 🔍 Search Card */
+    .search-box {
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(14px);
+        padding: 20px 22px;
+        border-radius: 16px;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.45);
+        max-width: 900px;
+        margin: 2rem auto 0 auto;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .search-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .search-title-block {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .search-icon-circle {
+        width: 42px;
+        height: 42px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #2563eb, #4f46e5);
+        color: #fff;
+        box-shadow: 0 10px 22px rgba(37, 99, 235, 0.45);
+        font-size: 1.1rem;
+    }
+
+    .search-title-text {
+        line-height: 1.2;
+    }
+
+        .search-title-text h5 {
+            margin: 0;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .search-title-text small {
+            color: #64748b;
+            font-size: 0.78rem;
+        }
+
+    .search-chip {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.7rem;
+        border-radius: 999px;
+        background: #e0f2fe;
+        color: #0369a1;
+        border: 1px solid #bae6fd;
+    }
+
+    .search-controls {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1.1fr) minmax(0, 0.9fr);
+        gap: 0.6rem;
+        align-items: center;
+        margin-bottom: 0.6rem;
+    }
+
+    .search-main-input {
+        position: relative;
+    }
+
+        .search-main-input .form-control {
+            padding-left: 2.2rem;
+            border-radius: 999px;
+            border-color: #e2e8f0;
+            font-size: 0.95rem;
+        }
+
+            .search-main-input .form-control:focus {
+                box-shadow: 0 0 0 1px #2563eb33;
+                border-color: #2563eb;
+            }
+
+        .search-main-input .search-input-icon {
+            position: absolute;
+            left: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+    .search-select .form-select {
+        border-radius: 999px;
+        font-size: 0.9rem;
+        border-color: #e2e8f0;
+    }
+
+    .search-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.4rem;
+        white-space: nowrap;
+        font-size: 0.86rem;
+        color: #0f172a;
+    }
+
+        .search-toggle .form-check-input {
+            cursor: pointer;
+        }
+
+    .search-actions {
+        display: flex;
+        justify-content: flex-end;
+    }
+
+        .search-actions .btn-search {
+            border-radius: 999px;
+            padding-inline: 1.7rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            box-shadow: 0 10px 24px rgba(37, 99, 235, 0.4);
+        }
+
+    /* 🧩 Categories section shell */
+    .home-body {
+        background-color: #f3f4f6;
+        padding: 3rem 0 3.5rem;
+    }
+
+    .categories-section {
+        padding-inline: 1rem;
+    }
+
+    .categories-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .categories-title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .categories-title {
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+    }
+
+    .categories-subtitle {
+        color: #6b7280;
+        font-size: 0.9rem;
+        margin-top: 0.2rem;
+    }
+
+    .categories-pill {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.8rem;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #4f46e5;
+        border: 1px solid #e0e7ff;
+        white-space: nowrap;
+    }
+
+    /* 🎨 Category cards: كرت أبيض، الأيقونة ودائرتها هي الملونة */
+    .category-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        cursor: pointer;
+        transition: all 0.18s ease-in-out;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+        .category-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+        }
+
+    .category-icon-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        flex-shrink: 0;
+    }
+
+        .category-icon-circle i {
+            font-size: 1.3rem;
+        }
+
+    /* 🎯 ألوان الدوائر – كل كاتيجوري بلون واضح */
+    .circle-electronics {
+        background: #3b82f6;
+    }
+    /* أزرق */
+    .circle-furniture {
+        background: #d97706;
+    }
+    /* برتقالي غامق */
+    .circle-appliances {
+        background: #6b7280;
+    }
+    /* رمادي داكن أنيق */
+    .circle-clothing {
+        background: #a855f7;
+    }
+    /* بنفسجي */
+    .circle-sports {
+        background: #ef4444;
+    }
+    /* أحمر */
+    .circle-baby {
+        background: #ec4899;
+    }
+    /* وردي */
+    .circle-photo {
+        background: #6366f1;
+    }
+    /* نيلي */
+    .circle-party {
+        background: #f59e0b;
+    }
+    /* ذهبي */
+    .circle-tools {
+        background: #16a34a;
+    }
+    /* أخضر */
+    .circle-games {
+        background: #0ea5e9;
+    }
+    /* سماوي */
+    .circle-books {
+        background: #334155;
+    }
+    /* أزرق فحمي */
+    .circle-garden {
+        background: #65a30d;
+    }
+    /* أخضر مزهر */
+    .circle-health {
+        background: #ef4444;
+    }
+    /* أحمر صحي */
+    .circle-office {
+        background: #475569;
+    }
+    /* رمادي أزرق */
+    .circle-camping {
+        background: #059669;
+    }
+    /* زمردي */
+    .circle-seasonal {
+        background: #d946ef;
+    }
+    /* بنفسجي وردي */
+    .circle-default {
+        background: #3b82f6;
+    }
+    /* fallback: أزرق، مو رمادي */
+
+    .category-text-block h6 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1rem;
+        color: #0f172a;
+    }
+
+    .category-arrow {
+        margin-left: auto;
+        color: #94a3b8;
+        font-size: 1.1rem;
+        transition: transform 0.15s ease;
+    }
+
+    .category-card:hover .category-arrow {
+        transform: translateX(3px);
+    }
+
+    @@media (max-width: 768px) {
+        .hero-section {
+            height: auto;
+            padding: 2.5rem 0 1.5rem;
+            margin-top: -16px;
+        }
+
+        .search-box {
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.35);
+        }
+
+        .search-controls {
+            grid-template-columns: minmax(0, 2fr) minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 0.9fr);
+        }
+
+        .search-actions {
+            justify-content: stretch;
+        }
+
+            .search-actions .btn-search {
+                width: 100%;
+                justify-content: center;
+            }
+
+        .categories-title-row {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
+
+<!-- HERO + SEARCH -->
+<div class="hero-section">
+    <div class="hero-content text-center text-md-start">
+        <h1 class="display-5 display-md-4 hero-title mb-2">
+            Find What You Need, Rent What You Want
+        </h1>
+        <p class="lead hero-subtitle mb-0">
+            Explore a variety of items in your city – easy, fast, and reliable.
+        </p>
+
+        <!-- 🔍 Search Box -->
+        <div class="search-box mt-4">
+            <div class="search-header">
+                <div class="search-title-block">
+                    <div class="search-icon-circle">
+                        <i class="bi bi-search"></i>
+                    </div>
+                    <div class="search-title-text">
+                        <h5>Search items to rent</h5>
+                        <small>Type what you need, pick a city, filter by shipping</small>
+                    </div>
+                </div>
+                <span class="search-chip">
+                    Smart search · typo friendly
+                </span>
+            </div>
+
+            <div class="search-controls">
+                <!-- Main text search -->
+                <div class="search-main-input">
+                    <i class="bi bi-search search-input-icon"></i>
+                    <input type="text"
+                           class="form-control"
+                           placeholder="What are you looking for?"
+                           @bind="searchTerm"
+                           @bind:event="oninput"
+                           @onkeydown="HandleSearchKeyDown" />
+                </div>
+
+                <!-- City -->
+                <div class="search-select">
+                    <select class="form-select" @bind="selectedCity">
+                        <option>All Cities</option>
+                        @foreach (var city in allCities)
+                        {
+                            <option>@city</option>
+                        }
+                    </select>
+                </div>
+                <!-- Sort by -->
+                <div class="search-select">
+                    <select class="form-select" @bind="sortOrder">
+                        <option value="">Sort by</option>
+
+                        <option value="low">Price: Low to High</option>
+                        <option value="high">Price: High to Low</option>
+
+                        <option value="rating-high">Rating: High to Low</option>
+                        <option value="rating-low">Rating: Low to High</option>
+                    </select>
+                </div>
+
+
+
+                <!-- Shippable toggle -->
+                <div class="search-toggle">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           id="shippable"
+                           @bind="isShippable" />
+                    <label class="form-check-label text-dark" for="shippable">
+                        Shippable only
+                    </label>
+                </div>
+            </div>
+
+            <div class="search-actions">
+                <button class="btn btn-primary btn-search" @onclick="OnSearch">
+                    <i class="bi bi-arrow-right-circle"></i>
+                    Find items
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CATEGORIES -->
+<div class="home-body">
+    <div class="container categories-section">
+        <div class="categories-header">
+            <div class="categories-title-row">
+                <div>
+                    <h4 class="categories-title">Browse by category</h4>
+                    <p class="categories-subtitle">
+                        Quickly jump into the most relevant items for what you need.
+                    </p>
+                </div>
+                <div class="categories-pill">
+                    @categories.Count category@(categories.Count == 1 ? "" : "ies") · @totalItems items
+                </div>
+            </div>
+        </div>
+
+        @if (categories == null || !categories.Any())
+        {
+            <div class="alert alert-info text-center">
+                No categories found.
+            </div>
+        }
+        else
+        {
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
+                @foreach (var category in categories)
+                {
+                    var circleClass = GetIconCircleClass(category.Name);
+
+                    <div class="col">
+                        <div class="category-card" @onclick="() => GoToCategory(category.Id)">
+                            <div class="category-icon-circle @circleClass">
+                                <i class="@GetCategoryIcon(category.Name)"></i>
+                            </div>
+
+                            <div class="category-text-block">
+                                <h6>@category.Name</h6>
+                            </div>
+
+                            <span class="category-arrow">
+                                <i class="bi bi-chevron-right"></i>
+                            </span>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    List<CategoryDto> categories = new();
+    List<ItemDto> allItems = new();
+    List<string> allCities = new();
+    int totalItems = 0;
+
+    string searchTerm = "";
+    string selectedCity = "All Cities";
+    bool isShippable = false;
+    string sortOrder = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = (await CategoryService.GetAllCategoriesAsync()).ToList();
+
+        allItems = (await ItemService.GetAllAsync()).ToList();
+        totalItems = allItems.Count;
+
+        allCities = allItems
+            .Where(i => !string.IsNullOrWhiteSpace(i.City))
+            .Select(i => i.City!)
+            .Distinct()
+            .OrderBy(city => city)
+            .ToList();
+    }
+
+    void OnSearch()
+    {
+        var queryParams = new Dictionary<string, string>();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+            queryParams["search"] = searchTerm;
+
+        if (!string.IsNullOrWhiteSpace(selectedCity) && selectedCity != "All Cities")
+            queryParams["city"] = selectedCity;
+
+        if (isShippable)
+            queryParams["shippable"] = "true";
+
+        if (!string.IsNullOrWhiteSpace(sortOrder))
+            queryParams["sortOrder"] = sortOrder;
+
+        var queryString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
+        NavManager.NavigateTo($"/items?{queryString}");
+    }
+
+    void HandleSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            OnSearch();
+        }
+    }
+
+    void GoToCategory(Guid categoryId)
+    {
+        NavManager.NavigateTo($"/items?categoryId={categoryId}");
+    }
+
+    string GetCategoryIcon(string name)
+    {
+        var s = name.ToLower();
+
+        if (s.Contains("electronics")) return "bi bi-tv";
+        if (s.Contains("furniture")) return "bi bi-reception-4";
+        if (s.Contains("appliance")) return "bi bi-house-door";
+        if (s.Contains("clothing") || s.Contains("fashion")) return "bi bi-bag";
+        if (s.Contains("sports")) return "bi bi-bicycle";
+        if (s.Contains("baby")) return "bi bi-heart-fill";  // أيقونة بيبي لطيفة
+        if (s.Contains("photo")) return "bi bi-camera";
+        if (s.Contains("party") || s.Contains("event")) return "bi bi-gift";
+        if (s.Contains("tools") || s.Contains("construction")) return "bi bi-hammer";
+        if (s.Contains("games") || s.Contains("hobbies")) return "bi bi-controller";
+        if (s.Contains("books") || s.Contains("education")) return "bi bi-book";
+        if (s.Contains("garden")) return "bi bi-flower1";
+        if (s.Contains("health") || s.Contains("beauty")) return "bi bi-heart-pulse";
+        if (s.Contains("office") || s.Contains("business")) return "bi bi-briefcase";
+        if (s.Contains("camping") || s.Contains("adventure")) return "bi bi-tree";
+        if (s.Contains("seasonal") || s.Contains("holiday")) return "bi bi-calendar3";
+
+        return "bi bi-box";
+    }
+
+    string GetIconCircleClass(string name)
+    {
+        var s = name.ToLower();
+
+        if (s.Contains("electronic")) return "circle-electronics";
+        if (s.Contains("furniture")) return "circle-furniture";
+        if (s.Contains("appliance")) return "circle-appliances";
+        if (s.Contains("cloth") || s.Contains("fashion")) return "circle-clothing";
+        if (s.Contains("sport")) return "circle-sports";
+        if (s.Contains("baby")) return "circle-baby";
+        if (s.Contains("photo") || s.Contains("camera")) return "circle-photo";
+        if (s.Contains("party") || s.Contains("event")) return "circle-party";
+        if (s.Contains("tool") || s.Contains("construction")) return "circle-tools";
+        if (s.Contains("game") || s.Contains("hobby")) return "circle-games";
+        if (s.Contains("book") || s.Contains("education")) return "circle-books";
+        if (s.Contains("garden")) return "circle-garden";
+        if (s.Contains("health") || s.Contains("beauty")) return "circle-health";
+        if (s.Contains("office") || s.Contains("business")) return "circle-office";
+        if (s.Contains("camp") || s.Contains("adventure")) return "circle-camping";
+        if (s.Contains("seasonal") || s.Contains("holiday")) return "circle-seasonal";
+
+        return "circle-default"; 
+    }
+}

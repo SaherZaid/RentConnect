@@ -1,0 +1,437 @@
+﻿@page "/policy"
+@rendermode InteractiveServer
+
+<PageTitle>Policies - RentConnect</PageTitle>
+
+<style>
+    .policy-hero {
+        background: radial-gradient(circle at top left, #eff6ff 0, #ffffff 45%, #eef2ff 100%);
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .policy-hero-inner {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 3rem 1.5rem 2.5rem;
+    }
+
+    .policy-kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #6366f1;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+    }
+
+    .policy-title {
+        font-size: clamp(2rem, 3vw, 2.4rem);
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.6rem;
+    }
+
+    .policy-subtitle {
+        max-width: 620px;
+        color: #64748b;
+        font-size: 0.95rem;
+    }
+
+    .policy-meta-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.3rem 0.75rem;
+        border-radius: 999px;
+        background-color: #e0f2fe;
+        color: #0369a1;
+        font-size: 0.78rem;
+        margin-top: 1.2rem;
+    }
+
+        .policy-meta-pill i {
+            font-size: 0.9rem;
+        }
+
+    /* Content layout */
+
+    .policy-wrapper {
+        padding: 2.5rem 1.5rem 3rem;
+    }
+
+    .policy-inner {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .policy-alert {
+        border-radius: 0.9rem;
+        padding: 0.9rem 1rem;
+        background-color: #fefce8;
+        border: 1px solid #facc15;
+        font-size: 0.86rem;
+        color: #78350f;
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-start;
+        margin-bottom: 1.75rem;
+    }
+
+        .policy-alert i {
+            margin-top: 0.15rem;
+        }
+
+    .policy-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.7fr) minmax(0, 1.1fr);
+        gap: 1.5rem;
+        align-items: flex-start;
+    }
+
+    .policy-main {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    .policy-card {
+        background-color: #ffffff;
+        border-radius: 1rem;
+        padding: 1.25rem 1.3rem;
+        border: 1px solid rgba(209,213,219,0.9);
+        box-shadow: 0 10px 24px rgba(15,23,42,0.04);
+    }
+
+    .policy-card-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 0.4rem;
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+    }
+
+        .policy-card-title i {
+            color: #4f46e5;
+        }
+
+    .policy-card-text {
+        font-size: 0.9rem;
+        color: #4b5563;
+        margin-bottom: 0.35rem;
+    }
+
+    .policy-card-list {
+        padding-left: 1.1rem;
+        margin-bottom: 0;
+    }
+
+        .policy-card-list li {
+            font-size: 0.88rem;
+            color: #4b5563;
+            margin-bottom: 0.25rem;
+        }
+
+    .policy-highlight {
+        background-color: #f9fafb;
+        border-radius: 0.8rem;
+        padding: 0.75rem 0.8rem;
+        font-size: 0.84rem;
+        color: #6b7280;
+        border: 1px dashed #e5e7eb;
+        margin-top: 0.5rem;
+    }
+
+    .policy-side {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .policy-side-card {
+        background-color: #f9fafb;
+        border-radius: 1rem;
+        padding: 1rem 1.1rem;
+        border: 1px solid #e5e7eb;
+        font-size: 0.86rem;
+        color: #4b5563;
+    }
+
+        .policy-side-card h6 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 0.4rem;
+        }
+
+    .policy-pill-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+    }
+
+    .policy-pill {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 999px;
+        background-color: #e5e7eb;
+        color: #374151;
+    }
+
+    .policy-underline {
+        text-decoration: underline;
+    }
+
+    .policy-footer-note {
+        margin-top: 2rem;
+        font-size: 0.78rem;
+        color: #9ca3af;
+    }
+
+    @@media (max-width: 992px) {
+        .policy-hero-inner
+
+    {
+        padding-top: 2.3rem;
+    }
+
+    .policy-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    }
+
+    @@media (max-width: 768px) {
+        .policy-wrapper
+
+    {
+        padding-inline: 1rem;
+    }
+
+    }
+</style>
+
+<div class="policy-hero">
+    <div class="policy-hero-inner">
+        <div class="policy-kicker">POLICIES & PRIVACY</div>
+        <h1 class="policy-title">
+            How RentConnect handles your data and your experience.
+        </h1>
+        <p class="policy-subtitle">
+            We want RentConnect to feel safe, predictable, and fair – whether you’re renting items or listing your own.
+            This page explains, in human language, how we treat your information and what we expect from everyone using the platform.
+        </p>
+
+        <span class="policy-meta-pill">
+            <i class="bi bi-shield-check"></i>
+            Last updated: @DateTime.UtcNow.ToString("dd MMM yyyy") (preview text)
+        </span>
+    </div>
+</div>
+
+<div class="policy-wrapper bg-white">
+    <div class="policy-inner">
+        <div class="policy-grid">
+            <!-- MAIN CONTENT -->
+            <div class="policy-main">
+
+                <!-- 1. What this policy covers -->
+                <div class="policy-card">
+                    <div class="policy-card-title">
+                        <i class="bi bi-file-text"></i>
+                        1. What this policy covers
+                    </div>
+                    <p class="policy-card-text">
+                        These policies explain how RentConnect handles:
+                    </p>
+                    <ul class="policy-card-list">
+                        <li>What information we collect when you use the platform.</li>
+                        <li>How we use that information to run RentConnect.</li>
+                        <li>Your choices and responsibilities as a user (renter or owner).</li>
+                    </ul>
+                    <div class="policy-highlight">
+                        By creating an account, listing an item, or sending a booking or message,
+                        you agree to follow these guidelines.
+                    </div>
+                </div>
+
+                <!-- 2. Information we collect -->
+                <div class="policy-card">
+                    <div class="policy-card-title">
+                        <i class="bi bi-person-badge"></i>
+                        2. Information we collect
+                    </div>
+                    <p class="policy-card-text">
+                        When you use RentConnect, we may collect and store the following types of information:
+                    </p>
+                    <ul class="policy-card-list">
+                        <li><strong>Account details</strong> – name, email, password (hashed), phone number.</li>
+                        <li><strong>Profile & listing data</strong> – items you list, descriptions, prices, location/city, images.</li>
+                        <li><strong>Usage data</strong> – pages you visit, searches you perform, actions you take inside the platform.</li>
+                        <li><strong>Messages & bookings</strong> – conversations with other users and booking requests/statuses.</li>
+                    </ul>
+                    <div class="policy-highlight">
+                        We only use this data to provide and improve the RentConnect experience
+                        – we don’t sell your personal information.
+                    </div>
+                </div>
+
+                <!-- 3. How we use your data -->
+                <div class="policy-card">
+                    <div class="policy-card-title">
+                        <i class="bi bi-gear-wide-connected"></i>
+                        3. How we use your data
+                    </div>
+                    <p class="policy-card-text">
+                        Your data is used so that the platform can actually work. Typical examples:
+                    </p>
+                    <ul class="policy-card-list">
+                        <li>Create and manage your account and profile.</li>
+                        <li>Allow you to list items, upload images, and edit your information.</li>
+                        <li>Show relevant items based on your searches and selected city.</li>
+                        <li>Enable messaging between renters and owners.</li>
+                        <li>Track bookings, statuses, and history for both sides.</li>
+                        <li>Improve reliability, security, and performance of the platform.</li>
+                    </ul>
+                </div>
+
+                <!-- 4. Cookies & technical info (optional / light) -->
+                <div class="policy-card">
+                    <div class="policy-card-title">
+                        <i class="bi bi-browser-chrome"></i>
+                        4. Cookies & technical information (light version)
+                    </div>
+                    <p class="policy-card-text">
+                        RentConnect may use basic cookies or similar technologies to:
+                    </p>
+                    <ul class="policy-card-list">
+                        <li>Keep you logged in between pages.</li>
+                        <li>Remember some of your preferences (like filters or views).</li>
+                        <li>Help us understand how people use the platform in general (non-personal analytics).</li>
+                    </ul>
+                    <p class="policy-card-text mb-0">
+                        You can usually control cookies through your browser settings, but some features may stop working properly if cookies are completely disabled.
+                    </p>
+                </div>
+
+                <!-- 5. Your responsibilities -->
+                <div class="policy-card">
+                    <div class="policy-card-title">
+                        <i class="bi bi-people"></i>
+                        5. Your responsibilities as a user
+                    </div>
+                    <p class="policy-card-text">
+                        To keep RentConnect safe and fair, you agree to:
+                    </p>
+                    <ul class="policy-card-list">
+                        <li>Provide accurate information when creating an account or listing items.</li>
+                        <li>Use respectful language in messages and reviews.</li>
+                        <li>Only upload images and content that you have the right to share.</li>
+                        <li>Follow local laws when renting, listing, or using any item.</li>
+                        <li>Not use the platform for scams, fraud, or any harmful activities.</li>
+                    </ul>
+                    <div class="policy-highlight">
+                        We may warn, limit, or suspend accounts that repeatedly break these rules or cause harm to other users.
+                    </div>
+                </div>
+
+                <!-- 6. Data retention & deletion -->
+                <div class="policy-card">
+                    <div class="policy-card-title">
+                        <i class="bi bi-archive"></i>
+                        6. Data retention & deletion
+                    </div>
+                    <p class="policy-card-text">
+                        We keep your data only for as long as it’s needed to:
+                    </p>
+                    <ul class="policy-card-list">
+                        <li>Operate RentConnect and show your items/bookings/messages.</li>
+                        <li>Respect legal, accounting, or security requirements.</li>
+                    </ul>
+                    <p class="policy-card-text mb-1">
+                        If you want to close your account, you can contact us and we’ll:
+                    </p>
+                    <ul class="policy-card-list">
+                        <li>Deactivate your account.</li>
+                        <li>Remove your active listings from public view.</li>
+                        <li>Keep only the minimum necessary records where legally required (for example: past bookings or logs).</li>
+                    </ul>
+                </div>
+
+                <!-- 7. Changes to this policy -->
+                <div class="policy-card">
+                    <div class="policy-card-title">
+                        <i class="bi bi-pencil-square"></i>
+                        7. Changes to this policy
+                    </div>
+                    <p class="policy-card-text">
+                        We may update this page from time to time as RentConnect grows or as laws change.
+                        When we make significant changes, we’ll try to:
+                    </p>
+                    <ul class="policy-card-list">
+                        <li>Update the “Last updated” date at the top.</li>
+                        <li>Show a short notice inside the app or on the homepage.</li>
+                    </ul>
+                    <p class="policy-card-text mb-0">
+                        If you continue using RentConnect after changes are published, that means you accept the updated policy.
+                    </p>
+                </div>
+
+                <!-- 8. Contact -->
+                <div class="policy-card">
+                    <div class="policy-card-title">
+                        <i class="bi bi-envelope-open"></i>
+                        8. Contact & questions
+                    </div>
+                    <p class="policy-card-text">
+                        If you have any questions about how RentConnect works, how your data is used,
+                        or if you’d like to request changes to your account, you can contact us via:
+                    </p>
+                    <ul class="policy-card-list">
+                        <li>Email (for example): <span class="policy-underline">RentConnectAB@gmail.com</span></li>
+                    </ul>
+                </div>
+
+              
+            </div>
+
+            <!-- SIDE INFO -->
+            <aside class="policy-side">
+                <div class="policy-side-card">
+                    <h6><i class="bi bi-shield-lock me-1"></i> Quick summary</h6>
+                    <p class="mb-1">
+                        We use your data to run RentConnect, connect renters and owners,
+                        and improve the platform. We don’t sell your personal information.
+                    </p>
+                    <p class="mb-0">
+                        If something doesn’t feel right, you can always reach out and ask us to review or remove your account.
+                    </p>
+                </div>
+
+                <div class="policy-side-card">
+                    <h6><i class="bi bi-exclamation-triangle me-1"></i> Things you should avoid</h6>
+                    <div class="policy-pill-list mb-2">
+                        <span class="policy-pill">Fake listings</span>
+                        <span class="policy-pill">Harassment</span>
+                        <span class="policy-pill">Spam messaging</span>
+                        <span class="policy-pill">Sharing private data</span>
+                    </div>
+                    <p class="mb-0">
+                        Any activity that harms other users or abuses the platform can lead to warnings or account suspension.
+                    </p>
+                </div>
+
+                <div class="policy-side-card">
+                    <h6><i class="bi bi-check2-circle me-1"></i> Best practices</h6>
+                    <ul class="policy-card-list">
+                        <li>Double-check your item details before publishing.</li>
+                        <li>Keep conversations inside the platform when possible.</li>
+                        <li>Use clear photos that represent the real item.</li>
+                        <li>Be on time for pickups/returns and keep communication open.</li>
+                    </ul>
+                </div>
+            </aside>
+        </div>
+    </div>
+</div>

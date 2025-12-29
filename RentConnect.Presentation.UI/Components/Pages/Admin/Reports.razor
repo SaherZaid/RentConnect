@@ -1,0 +1,427 @@
+﻿@page "/Admin/Reports"
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+
+@using Microsoft.AspNetCore.Authorization
+@using global::RentConnect.API.RentConnect.Domain.Models
+@using global::RentConnect.Presentation.UI.IServices
+@using global::RentConnect.API.RentConnect.Presentation.DTOs
+@using global::RentConnect.API.Controllers
+@using global::RentConnect.Presentation.UI.Components.Layout
+
+@layout AdminLayout
+
+
+
+
+
+@inject IReportAdminService ReportAdminService
+@inject NavigationManager Nav
+
+<PageTitle>Admin - Reports</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <div>
+            <h3 class="mb-0 fw-bold">
+                <i class="bi bi-flag-fill text-danger me-2"></i>Reports
+            </h3>
+            <div class="text-muted small">Manage user reports (items & reviews).</div>
+        </div>
+
+        <button class="btn btn-outline-secondary" @onclick="Reload">
+            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+        </button>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-lg-3">
+                    <label class="form-label small text-muted">Status</label>
+                    <select class="form-select" @bind="statusFilter">
+                        <option value="">All</option>
+                        <option value="@ReportStatus.Pending">Pending</option>
+                        <option value="@ReportStatus.Resolved">Resolved</option>
+                        <option value="@ReportStatus.Rejected">Rejected</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-lg-3">
+                    <label class="form-label small text-muted">Target</label>
+                    <select class="form-select" @bind="targetFilter">
+                        <option value="">All</option>
+                        <option value="@ReportTargetType.Item">Item</option>
+                        <option value="@ReportTargetType.Review">Review</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-lg-4">
+                    <label class="form-label small text-muted">Search</label>
+                    <input class="form-control" placeholder="reason, details, reporter name/email..."
+                           @bind="search" @bind:event="oninput" />
+                </div>
+
+                <div class="col-12 col-lg-2 d-grid">
+                    <button class="btn btn-primary" @onclick="ApplySearch">
+                        <i class="bi bi-search me-1"></i> Search
+                    </button>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between mt-3">
+                <div class="text-muted small">
+                    Total: <strong>@paged.Total</strong>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    <label class="text-muted small mb-0">Page size</label>
+                    <select class="form-select form-select-sm" style="width:110px" @bind="pageSize">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            @if (loading)
+            {
+                <div class="p-4 text-center">
+                    <div class="spinner-border text-primary"></div>
+                    <div class="text-muted mt-2">Loading reports...</div>
+                </div>
+            }
+            else if (!paged.Items.Any())
+            {
+                <div class="p-4 text-center text-muted">
+                    No reports found.
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:120px;">Status</th>
+                                <th>Target</th>
+                                <th>Reason</th>
+                                <th>Reporter</th>
+                                <th style="width:170px;">Created</th>
+                                <th style="width:240px;" class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in paged.Items)
+                            {
+                                <tr>
+                                    <td>
+                                        @StatusBadge(r.Status)
+                                    </td>
+
+                                    <td>
+                                        <div class="fw-semibold">
+                                            @if (r.TargetType == ReportTargetType.Item)
+                                            {
+                                                <span class="badge bg-info-subtle text-info border border-info-subtle me-2">Item</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle me-2">Review</span>
+                                            }
+                                            <span>@(string.IsNullOrWhiteSpace(r.TargetTitle) ? r.TargetId.ToString() : r.TargetTitle)</span>
+                                        </div>
+                                        <div class="text-muted small">ID: @r.TargetId</div>
+                                    </td>
+
+                                    <td>
+                                        <div class="fw-semibold">@r.Reason</div>
+                                        @if (!string.IsNullOrWhiteSpace(r.Details))
+                                        {
+                                            <div class="text-muted small text-truncate" style="max-width:520px">
+                                                @r.Details
+                                            </div>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        <div class="fw-semibold">@r.ReporterName</div>
+                                        <div class="text-muted small">@r.ReporterEmail</div>
+                                        <div class="text-muted small">ID: @r.ReporterUserId</div>
+                                    </td>
+
+                                    <td>
+                                        <div>@r.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</div>
+                                        <div class="text-muted small">@r.CreatedAt.ToLocalTime().ToString("HH:mm")</div>
+                                    </td>
+
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenDetails(r)">
+                                            <i class="bi bi-eye me-1"></i> Details
+                                        </button>
+
+                                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenTarget(r)">
+                                            <i class="bi bi-box-arrow-up-right me-1"></i> Open
+                                        </button>
+
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-success" title="Resolve"
+                                                    disabled="@saving"
+                                                    @onclick="() => SetStatus(r, ReportStatus.Resolved)">
+                                                <i class="bi bi-check2-circle"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-danger" title="Reject"
+                                                    disabled="@saving"
+                                                    @onclick="() => SetStatus(r, ReportStatus.Rejected)">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-dark" title="Back to Pending"
+                                                    disabled="@saving"
+                                                    @onclick="() => SetStatus(r, ReportStatus.Pending)">
+                                                <i class="bi bi-arrow-counterclockwise"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="p-3 d-flex align-items-center justify-content-between">
+                    <div class="text-muted small">
+                        Page @paged.Page of @TotalPages
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-secondary"
+                                disabled="@(paged.Page <= 1 || loading)"
+                                @onclick="PrevPage">
+                            <i class="bi bi-chevron-left"></i> Prev
+                        </button>
+
+                        <button class="btn btn-sm btn-outline-secondary"
+                                disabled="@(paged.Page >= TotalPages || loading)"
+                                @onclick="NextPage">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (showDetails && selected != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,.5)">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-flag-fill text-danger me-2"></i> Report Details
+                    </h5>
+                    <button class="btn-close" @onclick="CloseDetails"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="small text-muted">Status</div>
+                            <div>@StatusBadge(selected.Status)</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="small text-muted">Created</div>
+                            <div class="fw-semibold">@selected.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="small text-muted">Target</div>
+                            <div class="fw-semibold">
+                                @selected.TargetType — @selected.TargetId
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(selected.TargetTitle))
+                            {
+                                <div class="text-muted">@selected.TargetTitle</div>
+                            }
+                        </div>
+
+                        <div class="col-12">
+                            <div class="small text-muted">Reason</div>
+                            <div class="fw-semibold">@selected.Reason</div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="small text-muted">Details</div>
+                            <div class="border rounded p-2 bg-light">
+                                @(string.IsNullOrWhiteSpace(selected.Details) ? "—" : selected.Details)
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="small text-muted">Reporter</div>
+                            <div class="fw-semibold">@selected.ReporterName</div>
+                            <div class="text-muted small">@selected.ReporterEmail</div>
+                            <div class="text-muted small">ID: @selected.ReporterUserId</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary" @onclick="CloseDetails">Close</button>
+
+                    <button class="btn btn-outline-primary" @onclick="() => OpenTarget(selected)">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> Open Target
+                    </button>
+
+                    <button class="btn btn-success" disabled="@saving" @onclick="() => SetStatus(selected, ReportStatus.Resolved)">
+                        <i class="bi bi-check2-circle me-1"></i> Resolve
+                    </button>
+
+                    <button class="btn btn-danger" disabled="@saving" @onclick="() => SetStatus(selected, ReportStatus.Rejected)">
+                        <i class="bi bi-x-circle me-1"></i> Reject
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool loading = true;
+    private bool saving = false;
+
+    private PagedResult<ReportAdminDto> paged = new() { Items = new(), Total = 0, Page = 1, PageSize = 20 };
+
+    private int pageSize = 20;
+
+    private ReportStatus? statusFilter = ReportStatus.Pending; // default محترم: Pending
+    private ReportTargetType? targetFilter = null;
+    private string? search;
+
+    private bool showDetails = false;
+    private ReportAdminDto? selected;
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling((double)paged.Total / paged.PageSize));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync(1);
+    }
+
+    private async Task LoadAsync(int page)
+    {
+        loading = true;
+        StateHasChanged();
+
+        paged = await ReportAdminService.GetPagedAsync(statusFilter, targetFilter, search, page, pageSize);
+
+        loading = false;
+        StateHasChanged();
+    }
+
+    private async Task Reload() => await LoadAsync(paged.Page);
+
+    private async Task OnFiltersChanged(ChangeEventArgs _)
+    {
+        await LoadAsync(1);
+    }
+
+    private async Task ApplySearch()
+    {
+        await LoadAsync(1);
+    }
+
+    private async Task OnPageSizeChanged(ChangeEventArgs _)
+    {
+        await LoadAsync(1);
+    }
+
+    private async Task PrevPage()
+    {
+        if (paged.Page > 1)
+            await LoadAsync(paged.Page - 1);
+    }
+
+    private async Task NextPage()
+    {
+        if (paged.Page < TotalPages)
+            await LoadAsync(paged.Page + 1);
+    }
+
+    private RenderFragment StatusBadge(ReportStatus s) => builder =>
+    {
+        var (cls, text) = s switch
+        {
+            ReportStatus.Pending => ("bg-warning text-dark", "Pending"),
+            ReportStatus.Resolved => ("bg-success", "Resolved"),
+            ReportStatus.Rejected => ("bg-danger", "Rejected"),
+            _ => ("bg-secondary", s.ToString())
+        };
+
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", $"badge {cls}");
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    };
+
+    private void OpenDetails(ReportAdminDto r)
+    {
+        selected = r;
+        showDetails = true;
+    }
+
+    private void CloseDetails()
+    {
+        showDetails = false;
+        selected = null;
+    }
+
+    private void OpenTarget(ReportAdminDto r)
+    {
+        // ✅ إذا البلاغ على Item -> روح لصفحة الأدمن حق المنتج
+        if (r.TargetType == ReportTargetType.Item)
+        {
+            Nav.NavigateTo($"/Admin/Items/{r.TargetId}");
+            return;
+        }
+
+        // ✅ إذا البلاغ على Review -> لازم نعرف ItemId (جاي من API)
+        if (r.TargetType == ReportTargetType.Review)
+        {
+            if (r.TargetItemId.HasValue)
+            {
+                // روح لنفس المنتج + ركّز على نفس الريفيو
+                Nav.NavigateTo($"/Admin/Items/{r.TargetItemId.Value}?focusReview={r.TargetId}");
+                return;
+            }
+
+            // fallback لو ما وصل ItemId لأي سبب
+            Nav.NavigateTo("/Admin/Reviews");
+            return;
+        }
+    }
+
+
+    private async Task SetStatus(ReportAdminDto r, ReportStatus status)
+    {
+        saving = true;
+        StateHasChanged();
+
+        var ok = await ReportAdminService.UpdateStatusAsync(r.Id, status);
+        if (ok)
+        {
+            r.Status = status;
+            await Reload();
+        }
+
+        saving = false;
+        StateHasChanged();
+    }
+}

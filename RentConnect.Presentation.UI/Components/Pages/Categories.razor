@@ -1,0 +1,290 @@
+﻿@page "/Admin/Categories"
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin")]
+@using global::RentConnect.API.RentConnect.Domain.Models
+@using global::RentConnect.Presentation.UI.Components.Layout
+@using global::RentConnect.Presentation.UI.IServices
+@using global::RentConnect.Presentation.UI.RentConnect.Presentation.DTOs
+@using Microsoft.AspNet.SignalR
+@inject ICategoryService CategoryService
+@inject IItemService ItemService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<section class="category-page">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h2 class="page-title"><i class="bi bi-collection me-2"></i> Manage Categories</h2>
+        <button class="btn btn-success btn-lg rounded-pill px-4" @onclick="ShowAddCategoryModal">
+            <i class="bi bi-plus-circle me-1"></i> New Category
+        </button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary"></div>
+        </div>
+    }
+    else if (categories.Any())
+    {
+        <div class="category-board">
+            @foreach (var category in categories)
+            {
+                <div class="category-column shadow-sm">
+                    <div class="category-header d-flex justify-content-between align-items-center">
+                        <h5><i class="bi bi-folder2-open text-warning me-2"></i>@category.Name</h5>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light border" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" @onclick="() => ShowEditCategoryModal(category)">Edit</a></li>
+                                <li><a class="dropdown-item text-danger" @onclick="() => DeleteCategory(category.Id)">Delete</a></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="product-list">
+                        @if (category.Items.Any())
+                        {
+                            @foreach (var item in category.Items)
+                            {
+                                <div class="product-card shadow-sm">
+                                    <div class="fw-semibold">@item.Name</div>
+                                    <small class="text-muted">$@item.PricePerDay.ToString("0.00")/day</small>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="text-muted fst-italic small">No products yet</div>
+                        }
+                    </div>
+
+                    <button class="btn btn-sm btn-outline-primary mt-3 w-100" @onclick="() => OpenAddItemModal(category.Id)">
+                        <i class="bi bi-plus"></i> Add Product
+                    </button>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-center text-muted mt-5">
+            <i class="bi bi-inbox fs-1"></i>
+            <p>No categories found.</p>
+        </div>
+    }
+</section>
+
+<!-- Add Category Modal -->
+@if (isAddCategoryModalVisible)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow rounded-4">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>New Category</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseAddCategoryModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="newCategory" OnValidSubmit="AddCategory">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label>Category Name</label>
+                            <InputText class="form-control" @bind-Value="newCategory.Name" />
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Create</button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Edit Modal -->
+@if (isEditCategoryModalVisible)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow rounded-4">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Category</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseEditCategoryModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="editCategory" OnValidSubmit="UpdateCategory">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label>Category Name</label>
+                            <InputText class="form-control" @bind-Value="editCategory.Name" />
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Save</button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Add Product Modal -->
+@if (isAddProductModalVisible)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow rounded-4">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-box-seam me-2"></i>Add Product</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseAddProductModal"></button>
+                </div>
+                <div class="modal-body">
+                    <select class="form-select" @bind="selectedProductId">
+                        <option value="">Select a product</option>
+                        @foreach (var product in items)
+                        {
+                            <option value="@product.Id">@product.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button class="btn btn-outline-secondary" @onclick="CloseAddProductModal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .category-page {
+        padding: 2rem;
+        background: #f5f7fa;
+    }
+
+    .page-title {
+        font-size: 1.7rem;
+        font-weight: 600;
+    }
+
+    .category-board {
+        display: flex;
+        gap: 1.5rem;
+        overflow-x: auto;
+        padding-bottom: 1rem;
+    }
+
+    .category-column {
+        background: white;
+        border-radius: 12px;
+        min-width: 300px;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .category-header h5 {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .product-list {
+        margin-top: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .product-card {
+        background: #f8f9fb;
+        border-radius: 8px;
+        padding: 0.75rem;
+        font-size: 0.95rem;
+    }
+
+        .product-card:hover {
+            background-color: #eef1f7;
+        }
+</style>
+
+@code {
+    private List<CategoryWithItemsDto> categories = new();
+    private List<ItemDto> items = new();
+    private bool isLoading = true;
+    private bool isAddProductModalVisible = false;
+    private Guid selectedCategoryId;
+    private int selectedProductId;
+    private bool isAddCategoryModalVisible = false;
+    private bool isEditCategoryModalVisible = false;
+    private CategoryDto newCategory = new();
+    private CategoryDto editCategory = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        categories = (await CategoryService.GetCategoriesWithItemsAsync()).ToList();
+        items = (await ItemService.GetAllAsync()).ToList();
+        isLoading = false;
+    }
+
+    private void ShowAddCategoryModal()
+    {
+        newCategory = new CategoryDto();
+        isAddCategoryModalVisible = true;
+    }
+
+    private void CloseAddCategoryModal() => isAddCategoryModalVisible = false;
+
+    private void ShowEditCategoryModal(CategoryWithItemsDto categoryDto)
+    {
+        editCategory = new CategoryDto
+            {
+                Id = categoryDto.Id,
+                Name = categoryDto.Name
+            };
+        isEditCategoryModalVisible = true;
+    }
+
+    private void CloseEditCategoryModal() => isEditCategoryModalVisible = false;
+
+    private async Task AddCategory()
+    {
+        if (!string.IsNullOrWhiteSpace(newCategory.Name))
+        {
+            await CategoryService.AddCategoryAsync(newCategory);
+            categories = (await CategoryService.GetCategoriesWithItemsAsync()).ToList();
+            CloseAddCategoryModal();
+        }
+    }
+
+    private async Task UpdateCategory()
+    {
+        if (!string.IsNullOrWhiteSpace(editCategory.Name))
+        {
+            await CategoryService.UpdateCategoryAsync(editCategory);
+            categories = (await CategoryService.GetCategoriesWithItemsAsync()).ToList();
+            CloseEditCategoryModal();
+        }
+    }
+
+    private async Task DeleteCategory(Guid categoryId)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Delete this category?");
+        if (confirmed)
+        {
+            await CategoryService.DeleteCategoryAsync(categoryId);
+            categories = (await CategoryService.GetCategoriesWithItemsAsync()).ToList();
+        }
+    }
+
+    private void OpenAddItemModal(Guid categoryId)
+    {
+        selectedCategoryId = categoryId;
+        isAddProductModalVisible = true;
+    }
+
+    private void CloseAddProductModal()
+    {
+        isAddProductModalVisible = false;
+        selectedProductId = 0;
+    }
+}

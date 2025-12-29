@@ -1,0 +1,86 @@
+﻿.custom-navbar {
+    background: linear-gradient(90deg, #007bff, #00c6ff);
+    color: white;
+}
+
+    .custom-navbar .navbar-brand {
+        font-size: 1.5rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+    }
+
+        .custom-navbar .navbar-brand i {
+            margin-right: 6px;
+            font-size: 1.3rem;
+        }
+
+    .custom-navbar .nav-link {
+        color: white !important;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+    }
+
+        .custom-navbar .nav-link i {
+            margin-right: 8px;
+            font-size: 1.1rem;
+        }
+
+        .custom-navbar .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+        }
+
+    .custom-navbar .btn {
+        margin-left: 10px;
+    }
+
+        .custom-navbar .btn i {
+            margin-right: 6px;
+            vertical-align:  middle;
+        }
+
+
+.footer-link {
+    color: #bbb;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+    .footer-link:hover {
+        color: white;
+        text-decoration:  underline;
+    }
+
+.hero-section {
+    background: url('/images/hero.jpg') center center/cover no-repeat;
+    height: 400px;
+}
+
+.search-box {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.icon-circle {
+    width: 64px;
+    height: 64px;
+    background-color: #f1f1f1;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.category-icon span {
+    display: block;
+    font-weight: 500;
+      color:   #333;
+}
+
+.flatpickr-day.booked-date {
+    background: red !important;
+    color: white  !important;
+}

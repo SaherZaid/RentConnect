@@ -1,0 +1,18 @@
+﻿@inherits LayoutComponentBase
+@using global::RentConnect.Presentation.UI.Components.Layout
+
+<div class="d-flex flex-column min-vh-100">
+    <NavMenu />
+
+    <main class="container my-4">
+        @Body
+    </main>
+    <Footer  />
+</div>
+
+<div id="blazor-error-ui" class="position-fixed bottom-0 start-0 bg-danger text-white p-2 w-100 text-center d-none">
+    An unhandled error has occurred.
+    <a href="" class="text-white">Reload</a>
+    <span class="ms-2 text-white dismiss" style="cursor: pointer;">×</span>
+</div>
+

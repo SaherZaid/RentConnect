@@ -1,0 +1,1003 @@
+﻿@page "/items/{id:guid}"
+@inject IItemService ItemService
+@inject IReviewService ReviewService
+@inject IBookingService BookingService
+@inject IFavoriteService FavoriteService
+@inject IReportService ReportService
+@inject UserService UserService
+@inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime JS
+@inject NavigationManager NavManager
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.SignalR.Client
+@inject IChatService ChatService
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using global::RentConnect.API.Enums
+@using global::RentConnect.Presentation.UI.RentConnect.Presentation.DTOs
+@using System.Security.Claims
+@using global::RentConnect.API.RentConnect.Presentation.DTOs
+@using global::RentConnect.API.RentConnect.Domain.Models
+@using global::RentConnect.Presentation.UI.IServices
+@using global::RentConnect.Presentation.UI.Services
+@implements IDisposable
+
+<PageTitle>Item Details</PageTitle>
+
+<style>
+    .item-title {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+
+    .item-meta {
+        font-size: 0.95rem;
+        color: #6c757d;
+    }
+
+    .info-icon {
+        width: 20px;
+        margin-right: 8px;
+        color: #0d6efd;
+    }
+
+    .carousel img {
+        height: 400px;
+        object-fit: cover;
+        border-radius: 10px;
+        cursor: zoom-in;
+    }
+
+    .review-card {
+        background: #f8f9fa;
+        border: none;
+        border-radius: 10px;
+    }
+
+    .section-title {
+        font-size: 1.4rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .badge-status {
+        font-size: 0.9rem;
+        padding: 0.4em 0.7em;
+    }
+
+    .booking-form input {
+        border-radius: 8px;
+    }
+
+    .booking-section h4 {
+        font-weight: bold;
+        color: #2c3e50;
+    }
+
+    .booking-section .form-label {
+        font-weight: 500;
+        font-size: 1rem;
+    }
+
+    .booking-section .form-control {
+        border-radius: 6px;
+    }
+
+    .booking-section .btn-primary {
+        font-size: 1.1rem;
+        padding: 0.6rem;
+    }
+
+    .chat-box {
+        background-color: #f5f5f5;
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .chat-messages {
+        max-height: 300px;
+        overflow-y: auto;
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .chat-bubble {
+        max-width: 75%;
+        padding: 0.6rem 1rem;
+        border-radius: 20px;
+        margin-bottom: 0.5rem;
+        position: relative;
+        word-break: break-word;
+    }
+
+        .chat-bubble.mine {
+            background-color: #0d6efd;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .chat-bubble.theirs {
+            background-color: #dee2e6;
+            color: #212529;
+            margin-right: auto;
+            text-align: left;
+        }
+
+    .chat-text {
+        font-size: 0.95rem;
+    }
+
+    .chat-time {
+        font-size: 0.75rem;
+        opacity: 0.7;
+        margin-top: 4px;
+    }
+
+    .chat-input {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+        .chat-input input {
+            border-radius: 20px;
+            flex: 1;
+            padding: 0.6rem 1rem;
+            font-size: 1rem;
+        }
+
+        .chat-input button {
+            border-radius: 20px;
+            padding: 0.6rem 1rem;
+            font-size: 1rem;
+        }
+
+    .chat-sender {
+        font-weight: bold;
+        font-size: 0.85rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .flatpickr-day.booked-date {
+        background-color: #dc3545 !important;
+        color: white;
+        cursor: not-allowed;
+    }
+
+    #dateRangePicker:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13,110,253,0.25);
+    }
+
+    /* === FULLSCREEN IMAGE MODAL (بسيط بدون كاروسيل) === */
+    .fullscreen-image-modal .modal-dialog {
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .fullscreen-image-modal .modal-content {
+        border-radius: 0;
+        background-color: #000;
+        border: none;
+    }
+
+    .fullscreen-image-modal .modal-body {
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+
+    .fullscreen-img {
+        max-width: 100%;
+        max-height: calc(100vh - 80px);
+        object-fit: contain;
+    }
+
+    .fullscreen-image-modal .btn-close {
+        filter: invert(1);
+        z-index: 1057;
+    }
+
+    .fs-nav-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        border: none;
+        background: rgba(0,0,0,0.4);
+        color: #fff;
+        width: 48px;
+        height: 48px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.6rem;
+    }
+
+        .fs-nav-btn.left {
+            left: 15px;
+        }
+
+        .fs-nav-btn.right {
+            right: 15px;
+        }
+
+        .fs-nav-btn:hover {
+            background: rgba(0,0,0,0.7);
+        }
+</style>
+
+@if (item == null)
+{
+    <div class="text-center mt-5">
+        <div class="spinner-border text-primary"></div>
+    </div>
+}
+else
+{
+    <div class="container my-5">
+        <div class="row g-4">
+            <div class="col-md-6">
+                @if (item.ImageUrls?.Any() == true)
+                {
+                    <div id="carouselImages" class="carousel slide" data-bs-ride="carousel">
+                        <div class="carousel-inner">
+                            @for (int i = 0; i < item.ImageUrls.Count; i++)
+                            {
+                                <div class="carousel-item @(i == 0 ? "active" : "")">
+                                    <img src="@item.ImageUrls[i]"
+                                         class="d-block w-100"
+                                         alt="Image"
+                                         @onclick="() => OpenImageModal(i)" />
+                                </div>
+                            }
+                        </div>
+                        <button class="carousel-control-prev" type="button" data-bs-target="#carouselImages" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon"></span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#carouselImages" data-bs-slide="next">
+                            <span class="carousel-control-next-icon"></span>
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <img src="https://via.placeholder.com/600x400?text=No+Image" class="img-fluid rounded" />
+                }
+            </div>
+
+            <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h2 class="item-title">@item.Name</h2>
+                    <button class="btn btn-outline-danger rounded-circle" @onclick="ToggleFavorite">
+                        <i class="@(isFavorite ? "fas fa-heart" : "far fa-heart") fa-lg"></i>
+                    </button>
+                </div>
+
+                <div class="item-meta mb-3">@item.CategoryName</div>
+
+                @if (reviews.Any())
+                {
+                    <div class="mb-3">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            <i class="@(i <= Math.Floor(AverageRating) ? "fas" : "far") fa-star text-warning"></i>
+                        }
+                        <span class="text-muted">(@AverageRating.ToString("0.0") / 5)</span>
+                    </div>
+                }
+
+                <p><i class="fas fa-user info-icon"></i><strong>@item.OwnerFullName</strong></p>
+                <p><i class="fas fa-envelope info-icon"></i>@item.OwnerEmail</p>
+                <p><i class="fas fa-phone info-icon"></i>@(string.IsNullOrWhiteSpace(item.OwnerPhone) ? "Not provided" : item.OwnerPhone)</p>
+                <p><i class="fas fa-city info-icon"></i>@item.City</p>
+                <p><i class="fas fa-truck info-icon"></i>@(item.IsShippable ? "Shippable" : "Pickup only")</p>
+
+                <p class="mt-3">@item.Description</p>
+
+                @if (isAuthenticated)
+                {
+                    <button class="btn btn-sm btn-outline-danger mt-2"
+                            @onclick="OpenReportItem">
+                        <i class="fas fa-flag me-1"></i> Report this item
+                    </button>
+                }
+
+                <hr class="my-4" />
+                <h4 class="section-title"><i class="fas fa-comments me-2"></i>Chat with Owner</h4>
+
+                @if (isAuthenticated && currentUserId != item?.OwnerId)
+                {
+                    <button class="btn btn-outline-primary" @onclick="GoToMessages">
+                        <i class="fas fa-comment-dots me-1"></i> Send a Message
+                    </button>
+                }
+                else if (!isAuthenticated)
+                {
+                    <div class="alert alert-info">
+                        <i class="fas fa-lock me-2"></i>
+                        Please <a href="/Account/Login">log in</a> to chat with the owner.
+                    </div>
+                }
+
+                <div class="d-flex align-items-center mb-3 mt-4">
+                    <i class="fas fa-tag text-success me-2 fa-lg"></i>
+                    <span style="font-size: 1.6rem; font-weight: bold; color: #28a745;">@item.PricePerDay Kr/day</span>
+                </div>
+
+                @if (!string.IsNullOrEmpty(item.Notes))
+                {
+                    <div class="alert alert-secondary"><strong>Note:</strong> @item.Notes</div>
+                }
+
+                @if (isAuthenticated)
+                {
+                    <button class="btn btn-success mt-3" @onclick="ShowBookingSection">Book This Item</button>
+                }
+                else
+                {
+                    <div class="alert alert-warning mt-3">
+                        Please <a href="/Account/Login">log in</a> to book or leave a review.
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (isAuthenticated && showBookingSection)
+        {
+            <div class="booking-section bg-light rounded p-4 mt-5 shadow-sm">
+                <h4 class="mb-4"><i class="fas fa-calendar-check me-2 text-primary"></i>Book This Item</h4>
+
+                <EditForm Model="booking" OnValidSubmit="SubmitBooking">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="mb-3 position-relative">
+                        <label class="form-label">Select Booking Dates</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white">
+                                <i class="fas fa-calendar-alt text-primary"></i>
+                            </span>
+                            <input type="text" id="dateRangePicker" class="form-control" placeholder="Choose a date range..." readonly />
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(bookingMessage))
+                    {
+                        <div class="alert @(bookingSuccess ? "alert-success" : "alert-danger")">
+                            @bookingMessage
+                        </div>
+                    }
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-check-circle me-2"></i>Confirm Booking
+                    </button>
+                </EditForm>
+            </div>
+        }
+
+        <hr class="my-5" />
+
+        <h4 class="section-title"><i class="fas fa-comments me-2"></i>Reviews</h4>
+
+        @if (reviews.Any())
+        {
+            @foreach (var r in reviews)
+            {
+                <div class="card review-card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <strong>@r.UserFullName</strong>
+
+                            @if (isAuthenticated && r.UserId != currentUserId)
+                            {
+                                <button type="button"
+                                        class="btn btn-sm btn-link text-danger p-0"
+                                        title="Report review"
+                                        @onclick="() => OpenReportReview(r.Id)">
+                                    <i class="bi bi-flag-fill" style="font-size:1.1rem;"></i>
+                                </button>
+                            }
+                        </div>
+
+                        <p class="mb-1">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                <i class="@(i <= r.Rating ? "fas" : "far") fa-star text-warning"></i>
+                            }
+                        </p>
+
+                        <p>@r.Comment</p>
+                        <small class="text-muted">
+                            Posted on @r.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")
+                        </small>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <p class="text-muted">No reviews yet.</p>
+        }
+
+        @if (isAuthenticated && canSubmitReview)
+        {
+            <hr class="my-4" />
+            <h5>Leave a Review</h5>
+
+            <EditForm Model="newReview" OnValidSubmit="HandleSubmitReview">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-3">
+                    <label class="form-label">Rating</label>
+                    <InputSelect class="form-select" @bind-Value="newReview.Rating">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            <option value="@i">@string.Concat(Enumerable.Repeat("★", i))</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Comment</label>
+                    <InputTextArea class="form-control" @bind-Value="newReview.Comment" rows="3" />
+                </div>
+
+                <button class="btn btn-primary">Submit</button>
+            </EditForm>
+        }
+    </div>
+
+    <!-- ===== FULLSCREEN IMAGE MODAL (بصورة واحدة + زر يمين/يسار) ===== -->
+    @if (item.ImageUrls?.Any() == true)
+    {
+        <div class="modal fade fullscreen-image-modal" id="imageModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <button type="button"
+                            class="btn-close position-absolute top-0 end-0 m-3"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                    <div class="modal-body">
+                        
+                        @{
+                            var safeIndex = activeImageIndex;
+
+                            if (item.ImageUrls == null || item.ImageUrls.Count == 0)
+                            {
+                                safeIndex = 0;
+                            }
+                            else if (safeIndex < 0 || safeIndex >= item.ImageUrls.Count)
+                            {
+                                safeIndex = 0;
+                            }
+                        }
+
+                        <img src="@item.ImageUrls[safeIndex]" class="fullscreen-img" alt="Image full screen" />
+
+                        @if (item.ImageUrls.Count > 1)
+                        {
+                            <button type="button" class="fs-nav-btn left" @onclick="PrevImage">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <button type="button" class="fs-nav-btn right" @onclick="NextImage">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showReportModal)
+    {
+        <div class="modal fade show d-block" tabindex="-1"
+             style="background: rgba(0,0,0,.5)">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-flag me-2 text-danger"></i>
+                            Report
+                        </h5>
+                        <button class="btn-close"
+                                @onclick="() => showReportModal = false"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Reason</label>
+                            <select class="form-select" @bind="reportReason">
+                                <option value="">-- Select reason --</option>
+                                <option>Spam</option>
+                                <option>Inappropriate content</option>
+                                <option>Scam / Fraud</option>
+                                <option>Harassment</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Details (optional)</label>
+                            <textarea class="form-control"
+                                      rows="3"
+                                      @bind="reportDetails"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary"
+                                @onclick="() => showReportModal = false">
+                            Cancel
+                        </button>
+
+                        <button class="btn btn-danger"
+                                disabled="@reportSubmitting"
+                                @onclick="SubmitReport">
+                            @(reportSubmitting ? "Sending..." : "Submit Report")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+<script>
+    window.initDateRangePicker = function (unavailableDates, dotNetHelper) {
+        flatpickr("#dateRangePicker", {
+            mode: "range",
+            minDate: "today",
+            dateFormat: "Y-m-d",
+            disable: unavailableDates,
+            onDayCreate: function (dObj, dStr, fp, dayElem) {
+                const date = dayElem.dateObj;
+                const formatted = date.toISOString().split("T")[0];
+                if (unavailableDates.includes(formatted)) {
+                    dayElem.classList.add("booked-date");
+                }
+            },
+            onChange: function (selectedDates, dateStr, instance) {
+                if (selectedDates.length === 2) {
+                    dotNetHelper.invokeMethodAsync('UpdateBookingDates',
+                        selectedDates[0].toISOString(),
+                        selectedDates[1].toISOString()
+                    );
+                }
+            }
+        });
+    };
+
+    window.imageModalHelpers = {
+        showModal: function (selector) {
+            var modalEl = document.querySelector(selector);
+            if (!modalEl) return;
+            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+    };
+</script>
+
+@code {
+    [Parameter]
+    public Guid id { get; set; }
+
+    private ItemDto? item;
+    private List<ReviewDto> reviews = new();
+    private ReviewDto newReview = new() { Rating = 1 };
+    private bool isAuthenticated;
+    private bool canSubmitReview;
+    private string? message;
+    private string? currentUserId;
+
+    private BookingDto booking = new();
+    private List<DateTime> unavailableDates = new();
+    private string? bookingMessage;
+    private bool bookingSuccess = false;
+    private bool showBookingSection = false;
+
+    private bool isFavorite = false;
+
+    // أي صورة معروضة في الفل سكرين الآن
+    private int activeImageIndex = 0;
+
+    private double AverageRating => reviews.Count > 0 ? reviews.Average(r => r.Rating) : 0;
+
+    private HubConnection? hubConnection;
+    private List<MessageDto> messages = new();
+    private string newMessage = "";
+    private string? receiverId;
+    private Dictionary<string, string> userNames = new();
+
+    private DotNetObjectReference<ItemDetails>? objRef;
+
+    // ===== REPORT (Spam) =====
+    private bool showReportModal = false;
+    private bool reportSubmitting = false;
+    private string reportReason = "";
+    private string? reportDetails;
+
+    private ReportTargetType reportTargetType;
+    private Guid reportTargetId;
+
+    private void OpenReportItem()
+    {
+        reportTargetType = ReportTargetType.Item;
+        reportTargetId = id;
+        reportReason = "";
+        reportDetails = null;
+        showReportModal = true;
+    }
+
+    private void OpenReportReview(Guid reviewId)
+    {
+        reportTargetType = ReportTargetType.Review;
+        reportTargetId = reviewId;
+        reportReason = "";
+        reportDetails = null;
+        showReportModal = true;
+    }
+
+    private async Task SubmitReport()
+    {
+        if (string.IsNullOrWhiteSpace(reportReason) || currentUserId == null)
+            return;
+
+        reportSubmitting = true;
+
+        var dto = new ReportCreateDto
+            {
+                ReporterUserId = currentUserId,
+                TargetType = reportTargetType,
+                TargetId = reportTargetId,
+                Reason = reportReason,
+                Details = reportDetails
+            };
+
+        try
+        {
+            var ok = await ReportService.CreateAsync(dto);
+
+            if (ok)
+            {
+                showReportModal = false;
+                await JS.InvokeVoidAsync(
+                    "alert",
+                    "Thank you! Your report has been submitted."
+                );
+            }
+            else
+            {
+                await JS.InvokeVoidAsync(
+                    "alert",
+                    "Unable to submit report. Please try again later."
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", ex.Message);
+        }
+
+        reportSubmitting = false;
+    }
+
+
+    // ====== فتح مودال الصورة ======
+    private async Task OpenImageModal(int index)
+    {
+        if (item?.ImageUrls == null || item.ImageUrls.Count == 0)
+            return;
+
+        if (index < 0 || index >= item.ImageUrls.Count)
+            index = 0;
+
+        activeImageIndex = index;
+
+        await InvokeAsync(StateHasChanged);
+        await JS.InvokeVoidAsync("imageModalHelpers.showModal", "#imageModal");
+    }
+
+
+
+    private void PrevImage()
+    {
+        if (item?.ImageUrls == null || item.ImageUrls.Count == 0) return;
+        activeImageIndex = (activeImageIndex - 1 + item.ImageUrls.Count) % item.ImageUrls.Count;
+    }
+
+    private void NextImage()
+    {
+        if (item?.ImageUrls == null || item.ImageUrls.Count == 0) return;
+        activeImageIndex = (activeImageIndex + 1) % item.ImageUrls.Count;
+    }
+
+    // ====== الحجز ======
+    private async Task ShowBookingSection()
+    {
+        showBookingSection = true;
+        await InvokeAsync(StateHasChanged);
+
+        // ننتظر الريندر ثم نفعّل flatpickr
+        await Task.Delay(100);
+
+        objRef = DotNetObjectReference.Create(this);
+        var formattedDates = unavailableDates.Select(d => d.ToString("yyyy-MM-dd")).ToList();
+        await JS.InvokeVoidAsync("initDateRangePicker", formattedDates, objRef);
+    }
+
+    [JSInvokable]
+    public Task UpdateBookingDates(string start, string end)
+    {
+        booking.StartDate = DateTime.Parse(start);
+        booking.EndDate = DateTime.Parse(end);
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task SubmitBooking()
+    {
+        if (booking.StartDate == default || booking.EndDate == default)
+        {
+            bookingMessage = "Please select a valid date range before confirming the booking.";
+            bookingSuccess = false;
+            return;
+        }
+
+        booking.ItemId = id;
+        booking.RenterId = currentUserId!;
+        booking.Status = BookingStatus.Pending;
+
+        var isAvailable = await BookingService.IsItemAvailableAsync(id, booking.StartDate, booking.EndDate);
+        if (!isAvailable)
+        {
+            bookingMessage = "This item is already booked during the selected period.";
+            bookingSuccess = false;
+            return;
+        }
+
+        await BookingService.AddAsync(booking);
+        bookingMessage = "Your booking will be checked by the owner so please keep an eye on 'My Bookings' page!";
+        bookingSuccess = true;
+
+        booking = new(); // reset
+        await LoadUnavailableDates();
+    }
+
+    private async Task LoadUnavailableDates()
+    {
+        var bookings = await BookingService.GetByItemIdAsync(id);
+        unavailableDates = bookings
+            .Where(b => b.Status == BookingStatus.Confirmed)
+            .SelectMany(b => Enumerable.Range(0, (b.EndDate - b.StartDate).Days + 1)
+                .Select(offset => b.StartDate.AddDays(offset)))
+            .Distinct()
+            .ToList();
+    }
+
+    // ====== رسائل صاحب المنتج (نفس اللي كان عندك تقريباً) ======
+    private void GoToMessages()
+    {
+        if (!string.IsNullOrEmpty(currentUserId) && item != null)
+        {
+            NavManager.NavigateTo($"/messages?receiverId={item.OwnerId}&itemId={id}");
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(newMessage) || receiverId == null || hubConnection == null)
+            return;
+
+        var message = new MessageDto
+            {
+                ItemId = id,
+                SenderId = currentUserId!,
+                ReceiverId = receiverId!,
+                Content = newMessage,
+                Timestamp = DateTime.UtcNow
+            };
+
+        await ChatService.SendMessageAsync(message);
+        await hubConnection.InvokeAsync("SendMessage", id.ToString(), message.SenderId, message.ReceiverId, message.Content);
+
+        newMessage = "";
+    }
+
+    private async Task InitializeChat()
+    {
+        if (!isAuthenticated || item == null || currentUserId == null)
+            return;
+
+        if (currentUserId == item.OwnerId)
+        {
+            var allMessages = await ChatService.GetMessagesByItemAsync(id);
+            var firstSender = allMessages.FirstOrDefault(m => m.SenderId != currentUserId)?.SenderId;
+            if (firstSender == null) return;
+
+            receiverId = firstSender;
+            messages = allMessages
+                .Where(m =>
+                    (m.SenderId == currentUserId && m.ReceiverId == receiverId) ||
+                    (m.SenderId == receiverId && m.ReceiverId == currentUserId))
+                .OrderBy(m => m.Timestamp)
+                .ToList();
+        }
+        else
+        {
+            receiverId = item.OwnerId;
+            var allMessages = await ChatService.GetMessagesByItemAsync(id);
+            messages = allMessages
+                .Where(m =>
+                    (m.SenderId == currentUserId && m.ReceiverId == receiverId) ||
+                    (m.SenderId == receiverId && m.ReceiverId == currentUserId))
+                .OrderBy(m => m.Timestamp)
+                .ToList();
+        }
+
+        // تحميل أسماء المستخدمين
+        var userIds = messages
+            .Select(m => m.SenderId)
+            .Concat(messages.Select(m => m.ReceiverId))
+            .Distinct()
+            .Where(uid => uid != currentUserId)
+            .ToList();
+
+        foreach (var uid in userIds)
+        {
+            if (!userNames.ContainsKey(uid))
+            {
+                var user = await UserService.GetUserByIdAsync(uid);
+                if (user != null)
+                    userNames[uid] = user.FullName;
+            }
+        }
+
+        // SignalR
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl("https://localhost:7087/chathub")
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On<string, string, DateTime>("ReceiveMessage", (senderId, msg, timestamp) =>
+        {
+            if (senderId == receiverId || senderId == currentUserId)
+            {
+                messages.Add(new MessageDto
+                    {
+                        SenderId = senderId,
+                        ReceiverId = senderId == currentUserId ? receiverId! : currentUserId!,
+                        Content = msg,
+                        Timestamp = timestamp,
+                        ItemId = id
+                    });
+
+                InvokeAsync(StateHasChanged);
+            }
+        });
+
+        await hubConnection.StartAsync();
+        await hubConnection.InvokeAsync("JoinItemGroup", id.ToString());
+    }
+
+    // ====== المفضلة ======
+    private async Task ToggleFavorite()
+    {
+        if (isFavorite)
+        {
+            isFavorite = false;
+            if (isAuthenticated && currentUserId != null)
+            {
+                await FavoriteService.RemoveFromFavoritesAsync(currentUserId, id);
+            }
+            else
+            {
+                var json = await JS.InvokeAsync<string>("localStorage.getItem", "favorites");
+                var list = !string.IsNullOrWhiteSpace(json)
+                    ? System.Text.Json.JsonSerializer.Deserialize<List<Guid>>(json) ?? new()
+                    : new List<Guid>();
+
+                list.Remove(id);
+                await JS.InvokeVoidAsync("localStorage.setItem", "favorites", System.Text.Json.JsonSerializer.Serialize(list));
+            }
+        }
+        else
+        {
+            isFavorite = true;
+            if (isAuthenticated && currentUserId != null)
+            {
+                await FavoriteService.AddToFavoritesAsync(currentUserId, id);
+            }
+            else
+            {
+                var json = await JS.InvokeAsync<string>("localStorage.getItem", "favorites");
+                var list = !string.IsNullOrWhiteSpace(json)
+                    ? System.Text.Json.JsonSerializer.Deserialize<List<Guid>>(json) ?? new()
+                    : new List<Guid>();
+
+                if (!list.Contains(id)) list.Add(id);
+                await JS.InvokeVoidAsync("localStorage.setItem", "favorites", System.Text.Json.JsonSerializer.Serialize(list));
+            }
+        }
+    }
+
+    // ====== الريفيوز ======
+    private async Task HandleSubmitReview()
+    {
+        try
+        {
+            newReview.ItemId = id;
+            newReview.CreatedAt = DateTime.UtcNow;
+
+            await ReviewService.AddAsync(newReview);
+
+            message = "Review submitted successfully!";
+            reviews = (await ReviewService.GetByItemIdAsync(id)).ToList();
+            newReview = new() { Rating = 1 };
+        }
+        catch (Exception ex)
+        {
+            message = $"Error submitting review: {ex.Message}";
+        }
+    }
+
+    // ====== دورة حياة الكمبوننت ======
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        isAuthenticated = user.Identity?.IsAuthenticated ?? false;
+        currentUserId = user.FindFirst(c => c.Type == "sub")?.Value
+                      ?? user.FindFirst(c => c.Type.Contains("nameidentifier"))?.Value;
+
+        item = await ItemService.GetByIdAsync(id);
+        reviews = (await ReviewService.GetByItemIdAsync(id)).ToList();
+
+        if (isAuthenticated && currentUserId != null)
+        {
+            canSubmitReview = await BookingService.HasCompletedBookingAsync(id, currentUserId);
+            newReview.UserId = currentUserId;
+
+            var favorites = await FavoriteService.GetFavoritesForUserAsync(currentUserId);
+            isFavorite = favorites.Contains(id);
+        }
+
+        await LoadUnavailableDates();
+        await InitializeChat();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // لو المستخدم غير مسجّل، حمّل المفضلات من localStorage
+            if (!isAuthenticated)
+            {
+                var json = await JS.InvokeAsync<string>("localStorage.getItem", "favorites");
+                if (!string.IsNullOrWhiteSpace(json))
+                {
+                    var localFavs = System.Text.Json.JsonSerializer.Deserialize<List<Guid>>(json);
+                    isFavorite = localFavs?.Contains(id) ?? false;
+                    StateHasChanged();
+                }
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+        if (hubConnection != null)
+        {
+            _ = hubConnection.DisposeAsync();
+        }
+    }
+}

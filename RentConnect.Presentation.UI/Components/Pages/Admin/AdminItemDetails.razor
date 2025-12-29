@@ -1,0 +1,385 @@
+﻿@page "/Admin/Items/{id:guid}"
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using global::RentConnect.API.RentConnect.Domain.Models
+@using global::RentConnect.Presentation.UI.IServices
+@using global::RentConnect.API.RentConnect.Presentation.DTOs
+@using global::RentConnect.API.Controllers
+@using global::RentConnect.Presentation.UI.Components.Layout
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using global::RentConnect.API.Enums
+@using global::RentConnect.Presentation.UI.RentConnect.Presentation.DTOs
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components
+
+@using global::RentConnect.Presentation.UI.Services
+
+
+@layout AdminLayout
+
+@inject IItemService ItemService
+@inject IReviewService ReviewService
+@inject ICategoryService CategoryService
+@inject NavigationManager NavManager
+@inject IJSRuntime JS
+
+<PageTitle>Admin | Item Details</PageTitle>
+
+<style>
+    .item-title {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+
+    .meta {
+        color: #6c757d;
+        font-size: .9rem
+    }
+
+    .admin-bar {
+        display: flex;
+        gap: .5rem;
+        flex-wrap: wrap
+    }
+
+    .review-card {
+        background: #f8f9fa;
+        border-radius: 10px
+    }
+
+    .carousel img {
+        height: 380px;
+        object-fit: cover;
+        border-radius: 10px
+    }
+</style>
+
+@if (loading)
+{
+    <div class="text-center mt-5">
+        <div class="spinner-border text-primary"></div>
+    </div>
+}
+else if (item == null)
+{
+    <div class="alert alert-danger mt-4">Item not found</div>
+}
+else
+{
+    <div class="container my-4">
+
+        <!-- ADMIN ACTION BAR -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h2 class="item-title">@item.Name</h2>
+                <div class="meta">@item.CategoryName • @item.City</div>
+            </div>
+
+            <div class="admin-bar">
+                <button class="btn btn-outline-primary" @onclick="OpenEdit">
+                    <i class="bi bi-pencil-square"></i> Edit
+                </button>
+
+                <button class="btn btn-outline-danger" @onclick="DeleteItem">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+
+                <button class="btn btn-outline-secondary"
+                        @onclick="@(()=>NavManager.NavigateTo($"/items/{id}"))">
+                    View as User
+                </button>
+            </div>
+        </div>
+
+        <!-- IMAGES -->
+        @if (item.ImageUrls?.Any() == true)
+        {
+            <div class="carousel slide mb-4">
+                <div class="carousel-inner">
+                    @for (int i = 0; i < item.ImageUrls.Count; i++)
+                    {
+                        <div class="carousel-item @(i==0?"active":"")">
+                            <img src="@item.ImageUrls[i]" class="d-block w-100" />
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- DETAILS -->
+        <p>@item.Description</p>
+
+        <div class="meta mb-3">
+            <div><b>Owner:</b> @item.OwnerFullName</div>
+            <div><b>Email:</b> @item.OwnerEmail</div>
+            <div><b>Price:</b> @item.PricePerDay kr/day</div>
+            <div><b>Shipping:</b> @(item.IsShippable ? "Yes" : "No")</div>
+        </div>
+
+        <hr />
+
+        <!-- REVIEWS -->
+        <h4>Reviews (@reviews.Count)</h4>
+
+        @if (!reviews.Any())
+        {
+            <p class="text-muted">No reviews</p>
+        }
+        else
+        {
+            @foreach (var r in reviews.OrderByDescending(x => x.CreatedAt))
+            {
+                <div id="review-@r.Id" class="card review-card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <strong>@r.UserFullName</strong>
+
+                            <button class="btn btn-sm btn-outline-danger"
+                                    @onclick="() => DeleteReview(r.Id)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+
+                        <div class="mt-1">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                <i class="@(i<=r.Rating?"fas":"far") fa-star text-warning"></i>
+                            }
+                        </div>
+
+                        <p class="mt-2">@r.Comment</p>
+                        <small class="text-muted">
+                            @r.CreatedAt.ToLocalTime()
+                        </small>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+}
+
+<!-- EDIT MODAL -->
+@if (editOpen)
+{
+    <div class="modal fade show d-block" style="background:rgba(0,0,0,.5)">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>Edit Item</h5>
+                    <button class="btn-close" @onclick="()=>editOpen=false"></button>
+                </div>
+
+                <EditForm Model="edit" OnValidSubmit="SaveEdit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <div class="modal-body">
+
+                        <div class="mb-2">
+                            <label>Name</label>
+                            <InputText class="form-control" @bind-Value="edit.Name" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label>Description</label>
+                            <InputTextArea class="form-control" rows="3"
+                                           @bind-Value="edit.Description" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label>Price / day</label>
+                            <InputNumber TValue="double" class="form-control" @bind-Value="edit.PricePerDay" />
+
+                        </div>
+
+                        <InputSelect class="form-select" @bind-Value="edit.City">
+                            <option value="">-- Select city --</option>
+                            @foreach (var c in cities)
+                            {
+                                <option value="@c">@c</option>
+                            }
+                        </InputSelect>
+
+                        <div class="mb-2">
+                            <label>Category</label>
+                            <InputSelect class="form-select" @bind-Value="edit.CategoryId">
+                                <option value="@Guid.Empty">-- Select category --</option>
+                                @foreach (var cat in categories)
+                                {
+                                    <option value="@cat.Id">@cat.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="mb-2">
+                            <label>Notes (optional)</label>
+                            <InputTextArea class="form-control"
+                                           rows="2"
+                                           placeholder="Admin notes / extra info"
+                                           @bind-Value="edit.Notes" />
+                        </div>
+
+
+
+                        <div class="mb-2">
+                            <label>Shippable</label>
+                            <InputSelect class="form-select"
+                                         @bind-Value="edit.IsShippable">
+                                <option value="true">Yes</option>
+                                <option value="false">No</option>
+                            </InputSelect>
+                        </div>
+
+                    </div>
+
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="()=>editOpen=false">
+                            Cancel
+                        </button>
+
+
+                        <button type="submit" class="btn btn-primary">Save</button>
+
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+<script>
+    window.rcScrollToReview = (elementId) => {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+
+        el.classList.add("border", "border-3", "border-danger");
+        setTimeout(() => {
+            el.classList.remove("border", "border-3", "border-danger");
+        }, 2500);
+    };
+</script>
+
+
+@code {
+
+    [SupplyParameterFromQuery]
+    public Guid? focusReview { get; set; }
+
+    [Parameter] public Guid id { get; set; }
+
+    bool loading = true;
+    bool editOpen = false;
+
+    ItemDto? item;
+    List<ReviewDto> reviews = new();
+
+    
+
+    private List<string> cities = new();
+    private List<CategoryDto> categories = new();
+
+
+    private ItemUpdateDto edit = new();
+
+  
+
+    private bool _scrolledOnce = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_scrolledOnce && focusReview.HasValue && reviews.Any())
+        {
+            _scrolledOnce = true;
+            await JS.InvokeVoidAsync("rcScrollToReview", $"review-{focusReview.Value}");
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+    async Task Load()
+    {
+        loading = true;
+
+        item = await ItemService.GetByIdAsync(id);
+
+        if (item == null)
+        {
+            // المنتج محذوف أو غير موجود
+            reviews = new();
+            loading = false;
+            return;
+        }
+
+        reviews = (await ReviewService.GetByItemIdAsync(id)).ToList();
+        loading = false;
+
+        cities = await ItemService.GetCitiesAsync(); // بنسويها تحت
+        categories = (await CategoryService.GetAllCategoriesAsync()).ToList();
+
+
+
+    }
+
+   
+
+
+
+    void OpenEdit()
+    {
+        if (item == null) return;
+
+        edit = new ItemUpdateDto
+            {
+                Id = item.Id,
+                Name = item.Name,
+                Description = item.Description,
+                PricePerDay = item.PricePerDay,
+                City = item.City,
+                IsShippable = item.IsShippable,
+                Notes = item.Notes,
+                CategoryId = item.CategoryId
+            };
+
+        editOpen = true;
+    }
+
+
+    async Task SaveEdit()
+    {
+        await ItemService.UpdateAsync(edit);
+        editOpen = false;
+        await Load();
+    }
+
+
+    async Task DeleteItem()
+    {
+        var ok = await JS.InvokeAsync<bool>("confirm", "Delete this item permanently?");
+        if (!ok) return;
+
+        await ItemService.DeleteAsync(id);
+
+        // تنقل قسري عشان ما يظل على نفس الصفحة
+        NavManager.NavigateTo("/Admin/Reports", forceLoad: true);
+    }
+
+
+    async Task DeleteReview(Guid reviewId)
+    {
+        var ok = await JS.InvokeAsync<bool>(
+            "confirm", "Delete this review?");
+        if (!ok) return;
+
+        await ReviewService.DeleteAsync(reviewId);
+        reviews = (await ReviewService.GetByItemIdAsync(id)).ToList();
+    }
+}

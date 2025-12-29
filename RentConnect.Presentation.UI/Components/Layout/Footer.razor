@@ -1,0 +1,162 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthProvider
+
+<footer class="rc-footer mt-auto">
+    <div class="container py-5">
+        <div class="row g-4">
+
+            <!-- Brand + short intro -->
+            <div class="col-12 col-lg-4">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-box-seam-fill fs-3 text-primary"></i>
+                    <div class="fw-bold fs-4">RentConnect</div>
+                </div>
+
+                <div class="text-white-50">
+                    Find it. Rent it. Return it.
+                </div>
+
+                <div class="d-flex align-items-center gap-2 mt-3">
+                    <a class="rc-social" href="https://facebook.com" target="_blank" rel="noopener">
+                        <i class="bi bi-facebook"></i>
+                    </a>
+                    <a class="rc-social" href="https://twitter.com" target="_blank" rel="noopener">
+                        <i class="bi bi-twitter-x"></i>
+                    </a>
+                    <a class="rc-social" href="https://instagram.com" target="_blank" rel="noopener">
+                        <i class="bi bi-instagram"></i>
+                    </a>
+                    <a class="rc-social" href="https://linkedin.com" target="_blank" rel="noopener">
+                        <i class="bi bi-linkedin"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Links columns -->
+            <div class="col-6 col-lg-2">
+                <div class="rc-footer-title">Browse</div>
+                <ul class="rc-footer-list">
+                    <li><a class="rc-footer-link" href="/" data-enhance-nav="false">Home</a></li>
+                    <li><a class="rc-footer-link" href="/items" data-enhance-nav="false">Items</a></li>
+                    <li><a class="rc-footer-link" href="/favorites" data-enhance-nav="false">Favorites</a></li>
+                </ul>
+            </div>
+
+            <div class="col-6 col-lg-2">
+                <div class="rc-footer-title">Company</div>
+                <ul class="rc-footer-list">
+                    <li><a class="rc-footer-link" href="/about" data-enhance-nav="false">About</a></li>
+                    <li><a class="rc-footer-link" href="/policy" data-enhance-nav="false">Policy</a></li>
+                    <li><a class="rc-footer-link" href="/contact" data-enhance-nav="false">Contact</a></li>
+                </ul>
+            </div>
+
+            <div class="col-6 col-lg-2">
+                <div class="rc-footer-title">Account</div>
+                <ul class="rc-footer-list">
+                    <AuthorizeView>
+                        <Authorized>
+                            <li><a class="rc-footer-link" href="/profile" data-enhance-nav="false">My profile</a></li>
+                            <li><a class="rc-footer-link" href="/bookings" data-enhance-nav="false">My bookings</a></li>
+                            <li><a class="rc-footer-link" href="/messages" data-enhance-nav="false">Messages</a></li>
+                            <li><a class="rc-footer-link" href="/additems" data-enhance-nav="false">Add item</a></li>
+                        </Authorized>
+                        <NotAuthorized>
+                            <li><a class="rc-footer-link" href="/Account/Login" data-enhance-nav="false">Login</a></li>
+                            <li><a class="rc-footer-link" href="/Account/Register" data-enhance-nav="false">Sign up</a></li>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </ul>
+            </div>
+
+            <div class="col-6 col-lg-2">
+                <AuthorizeView Roles="Admin">
+                    <Authorized>
+                        <div class="rc-footer-title">Admin</div>
+                        <ul class="rc-footer-list">
+                            <li><a class="rc-footer-link" href="/Admin/Users" data-enhance-nav="false">Admin panel</a></li>
+                            <li><a class="rc-footer-link" href="/Admin/Reports" data-enhance-nav="false">Reports</a></li>
+                        </ul>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </div>
+
+        <hr class="rc-footer-hr my-4" />
+
+        <!-- Bottom bar -->
+        <div class="d-flex flex-column flex-md-row gap-2 align-items-center justify-content-between">
+            <div class="text-white-50 small">
+                &copy; @DateTime.Now.Year RentConnect. All rights reserved.
+            </div>
+
+            <div class="d-flex gap-3 small">
+                <a class="rc-footer-link" href="/policy" data-enhance-nav="false">Privacy</a>
+                <a class="rc-footer-link" href="/policy" data-enhance-nav="false">Terms</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<style>
+    .rc-footer {
+        background: #0b1220;
+        color: #fff;
+    }
+
+    .rc-footer-title {
+        font-weight: 700;
+        font-size: .9rem;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        margin-bottom: .75rem;
+        color: rgba(255,255,255,.85);
+    }
+
+    .rc-footer-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: .45rem;
+    }
+
+    .rc-footer-link {
+        color: rgba(255,255,255,.65);
+        text-decoration: none;
+        transition: color .15s ease, transform .12s ease;
+        display: inline-block;
+    }
+
+        .rc-footer-link:hover {
+            color: #fff;
+            transform: translateX(2px);
+            text-decoration: none;
+        }
+
+    .rc-footer-hr {
+        border-color: rgba(255,255,255,.12);
+        opacity: 1;
+    }
+
+    .rc-social {
+        width: 38px;
+        height: 38px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,.06);
+        color: rgba(255,255,255,.85);
+        text-decoration: none;
+        transition: transform .12s ease, background .15s ease, color .15s ease;
+    }
+
+        .rc-social:hover {
+            background: rgba(255,255,255,.12);
+            color: #fff;
+            transform: translateY(-1px);
+            text-decoration: none;
+        }
+</style>
